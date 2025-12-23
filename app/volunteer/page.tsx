@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, getUserProfile } from '@/lib/auth';
-import { supabase, Language, Session } from '@/lib/supabase';
+import { supabase, Session } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
+import { useLanguage } from '@/lib/language-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import { Calendar, Clock, Sparkles, CheckSquare, Package } from 'lucide-react';
 
 export default function VolunteerDashboard() {
   const router = useRouter();
-  const [language, setLanguage] = useState<Language>('en');
+  const { language } = useLanguage();
   const [todaySessions, setTodaySessions] = useState<Session[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,13 +25,6 @@ export default function VolunteerDashboard() {
   async function loadData() {
     try {
       setLoading(true);
-      const user = await getCurrentUser();
-      if (user) {
-        const profile = await getUserProfile(user.id);
-        if (profile) {
-          setLanguage(profile.preferred_language);
-        }
-      }
 
       const today = new Date().toISOString().split('T')[0];
       const tomorrow = new Date();

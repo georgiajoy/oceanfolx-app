@@ -4,19 +4,20 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser, getUserProfile, signOut } from '@/lib/auth';
-import { supabase, UserProfile, Language } from '@/lib/supabase';
+import { UserProfile } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
+import { LanguageProvider, useLanguage } from '@/lib/language-context';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Users, Calendar, LayoutDashboard, LogOut, Package, Menu } from 'lucide-react';
 
-export default function VolunteerLayout({ children }: { children: React.ReactNode }) {
+function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState<Language>('en');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { language, updateLanguage } = useLanguage();
   const t = useTranslation(language);
 
   useEffect(() => {
@@ -38,7 +39,6 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
       }
 
       setProfile(userProfile);
-      setLanguage(userProfile.preferred_language);
     } catch (error) {
       console.error('Auth error:', error);
       router.push('/');
@@ -47,16 +47,9 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
     }
   }
 
-  async function handleLanguageChange(newLang: Language) {
-    if (!profile) return;
-
+  async function handleLanguageChange(newLang: 'en' | 'id') {
     try {
-      await supabase
-        .from('users')
-        .update({ preferred_language: newLang })
-        .eq('id', profile.id);
-
-      setLanguage(newLang);
+      await updateLanguage(newLang);
     } catch (error) {
       console.error('Error updating language:', error);
     }
@@ -164,5 +157,13 @@ export default function VolunteerLayout({ children }: { children: React.ReactNod
         {children}
       </main>
     </div>
+  );
+}
+
+export default function VolunteerLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <LanguageProvider>
+      <VolunteerLayoutContent>{children}</VolunteerLayoutContent>
+    </LanguageProvider>
   );
 }
