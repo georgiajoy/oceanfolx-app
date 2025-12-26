@@ -5,7 +5,7 @@ import { UserRole, Language } from '@/lib/supabase';
 
 function phoneToEmail(phone: string): string {
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  return `${cleanPhone}@oceanfolx.org`;
+  return `p${cleanPhone}@gmail.com`;
 }
 
 export async function createUserAction(

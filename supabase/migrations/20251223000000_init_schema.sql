@@ -382,6 +382,23 @@ CREATE POLICY "Participants can sign up for sessions"
     AND status = 'signed_up'
   );
 
+CREATE POLICY "Participants can insert self-reported attendance"
+  ON session_participants FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM participants p WHERE p.id = session_participants.participant_id AND p.user_id = auth.uid())
+    AND status = 'self_reported'
+  );
+
+CREATE POLICY "Participants can update own session_participants"
+  ON session_participants FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM participants p WHERE p.id = session_participants.participant_id AND p.user_id = auth.uid())
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM participants p WHERE p.id = session_participants.participant_id AND p.user_id = auth.uid())
+    AND status IN ('self_reported','signed_up')
+  );
+
 CREATE POLICY "Admins can insert session_participants"
   ON session_participants FOR INSERT TO authenticated
   WITH CHECK (is_admin(auth.uid()));
