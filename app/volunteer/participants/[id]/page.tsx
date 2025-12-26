@@ -64,11 +64,11 @@ export default function VolunteerParticipantDetailPage() {
       }
 
       const [participantResult, skillsResult, levelsResult, participantSkillsResult, participantLevelsResult] = await Promise.all([
-        supabase.from('participants').select('*').eq('id', participantId).maybeSingle(),
+        supabase.from('participants').select('*, user:users(full_name)').eq('id', participantId).maybeSingle(),
         supabase.from('skills').select('*').order('order_number'),
         supabase.from('levels').select('*').order('order_number'),
-        supabase.from('participant_skills').select('*, skill:skills(*)').eq('participant_id', participantId),
-        supabase.from('participant_levels').select('*, level:levels(*)').eq('participant_id', participantId),
+        supabase.from('participant_progress').select('*, skill:skills(*)').eq('participant_id', participantId).not('skill_id','is', null),
+        supabase.from('participant_progress').select('*, level:levels(*)').eq('participant_id', participantId).not('level_id','is', null),
       ]);
 
       if (participantResult.error) throw participantResult.error;
@@ -77,7 +77,9 @@ export default function VolunteerParticipantDetailPage() {
       if (participantSkillsResult.error) throw participantSkillsResult.error;
       if (participantLevelsResult.error) throw participantLevelsResult.error;
 
-      setParticipant(participantResult.data);
+      const pData = participantResult.data as any;
+      const mappedParticipant = pData ? { ...pData, full_name: pData.user?.full_name || pData.full_name || '' } : null;
+      setParticipant(mappedParticipant);
       setAllSkills(skillsResult.data || []);
       setAllLevels(levelsResult.data || []);
       setParticipantSkills(participantSkillsResult.data as ParticipantSkillWithDetails[] || []);
@@ -105,7 +107,7 @@ export default function VolunteerParticipantDetailPage() {
     try {
       setMessage('');
       const { error } = await supabase
-        .from('participant_skills')
+        .from('participant_progress')
         .insert({
           participant_id: participantId,
           skill_id: selectedSkillId,
@@ -132,7 +134,7 @@ export default function VolunteerParticipantDetailPage() {
     try {
       setMessage('');
       const { error } = await supabase
-        .from('participant_skills')
+        .from('participant_progress')
         .delete()
         .eq('id', skillId);
 
@@ -151,7 +153,7 @@ export default function VolunteerParticipantDetailPage() {
     try {
       setMessage('');
       const { error } = await supabase
-        .from('participant_levels')
+        .from('participant_progress')
         .insert({
           participant_id: participantId,
           level_id: selectedLevelId,
@@ -178,7 +180,7 @@ export default function VolunteerParticipantDetailPage() {
     try {
       setMessage('');
       const { error } = await supabase
-        .from('participant_levels')
+        .from('participant_progress')
         .delete()
         .eq('id', levelId);
 
@@ -194,10 +196,18 @@ export default function VolunteerParticipantDetailPage() {
   async function handleSaveParticipantInfo() {
     try {
       setMessage('');
+      const userId = participant?.user_id;
+      if (userId) {
+        const { error: userError } = await supabase
+          .from('users')
+          .update({ full_name: participantForm.full_name })
+          .eq('id', userId);
+        if (userError) throw userError;
+      }
+
       const { error } = await supabase
         .from('participants')
         .update({
-          full_name: participantForm.full_name,
           emergency_contact_name: participantForm.emergency_contact_name,
           emergency_contact_phone: participantForm.emergency_contact_phone,
           shoe_size: participantForm.shoe_size,

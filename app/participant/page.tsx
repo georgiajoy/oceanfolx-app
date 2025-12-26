@@ -53,18 +53,20 @@ export default function ParticipantDashboard() {
 
       const { data: participantData, error: participantError } = await supabase
         .from('participants')
-        .select('*')
+        .select('*, user:users(full_name)')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (participantError) throw participantError;
-      setParticipant(participantData);
+      const pData = participantData as any;
+      setParticipant(pData ? { ...pData, full_name: pData.user?.full_name || pData.full_name || '' } : null);
 
       if (participantData) {
         const { data: levelData, error: levelError } = await supabase
-          .from('participant_levels')
+          .from('participant_progress')
           .select('*, levels(*)')
           .eq('participant_id', participantData.id)
+          .not('level_id','is', null)
           .order('achieved_date', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -73,9 +75,10 @@ export default function ParticipantDashboard() {
         setCurrentLevel(levelData);
 
         const { data: skillsData, error: skillsError } = await supabase
-          .from('participant_skills')
+          .from('participant_progress')
           .select('*, skills(*)')
           .eq('participant_id', participantData.id)
+          .not('skill_id','is', null)
           .order('achieved_date', { ascending: false })
           .limit(3);
 
@@ -83,9 +86,10 @@ export default function ParticipantDashboard() {
         setRecentSkills(skillsData || []);
 
         const { data: lessonDataList, error: lessonError } = await supabase
-          .from('lesson_signups')
+          .from('session_participants')
           .select('*, sessions(*)')
-          .eq('participant_id', participantData.id);
+          .eq('participant_id', participantData.id)
+          .eq('status', 'signed_up');
 
         if (lessonError) throw lessonError;
 

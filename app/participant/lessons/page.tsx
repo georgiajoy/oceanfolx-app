@@ -76,21 +76,16 @@ export default function ParticipantLessonsPage() {
       if (sessionsError) throw sessionsError;
       setSessions(sessionsData || []);
 
-      const { data: signupsData, error: signupsError } = await supabase
-        .from('lesson_signups')
-        .select('*')
+      const { data: spData, error: spError } = await supabase
+        .from('session_participants')
+        .select('*, sessions(*)')
         .eq('participant_id', participantData.id);
 
-      if (signupsError) throw signupsError;
-      setSignups(signupsData || []);
+      if (spError) throw spError;
 
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('participant_id', participantData.id);
-
-      if (attendanceError) throw attendanceError;
-      setAttendance(attendanceData || []);
+      const all = spData || [];
+      setSignups(all.filter((s: any) => s.status === 'signed_up'));
+      setAttendance(all.filter((s: any) => s.status !== 'signed_up'));
     } catch (error) {
       console.error('Error loading data:', error);
       setError(t('failed_load_lessons'));
@@ -107,10 +102,11 @@ export default function ParticipantLessonsPage() {
 
     try {
       const { error: signupError } = await supabase
-        .from('lesson_signups')
+        .from('session_participants')
         .insert({
           session_id: sessionId,
           participant_id: participantId,
+          status: 'signed_up',
         });
 
       if (signupError) throw signupError;
@@ -130,10 +126,11 @@ export default function ParticipantLessonsPage() {
 
     try {
       const { error: deleteError } = await supabase
-        .from('lesson_signups')
+        .from('session_participants')
         .delete()
         .eq('session_id', sessionId)
-        .eq('participant_id', participantId);
+        .eq('participant_id', participantId)
+        .eq('status', 'signed_up');
 
       if (deleteError) throw deleteError;
 
@@ -152,12 +149,16 @@ export default function ParticipantLessonsPage() {
 
     try {
       const { error: checkInError } = await supabase
-        .from('attendance')
-        .insert({
-          session_id: sessionId,
-          participant_id: participantId,
-          status: 'self_reported',
-        });
+        .from('session_participants')
+        .upsert(
+          {
+            session_id: sessionId,
+            participant_id: participantId,
+            status: 'self_reported',
+            marked_at: new Date().toISOString(),
+          },
+          { onConflict: ['session_id', 'participant_id'] }
+        );
 
       if (checkInError) throw checkInError;
 

@@ -61,11 +61,12 @@ export default function VolunteerGearAssignmentsPage() {
 
       const { data: participantsData, error: participantsError } = await supabase
         .from('participants')
-        .select('*')
-        .order('full_name');
+        .select('*, user:users(full_name)');
 
       if (participantsError) throw participantsError;
-      setParticipants(participantsData || []);
+      const mappedParticipants = (participantsData || []).map((p: any) => ({ ...p, full_name: p.user?.full_name || p.full_name || '' }));
+      mappedParticipants.sort((a: any, b: any) => a.full_name.localeCompare(b.full_name));
+      setParticipants(mappedParticipants || []);
 
       const { data: inventoryData, error: inventoryError } = await supabase
         .from('gear_inventory')
@@ -78,11 +79,15 @@ export default function VolunteerGearAssignmentsPage() {
 
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('gear_assignments')
-        .select('*, participants(*), gear_inventory(*, gear_types(*))')
+        .select('*, participants(*, user:users(full_name)), gear_inventory(*, gear_types(*))')
         .order('assigned_date', { ascending: false });
 
       if (assignmentsError) throw assignmentsError;
-      setAssignments(assignmentsData || []);
+      const mappedAssignments = (assignmentsData || []).map((a: any) => ({
+        ...a,
+        participants: { ...a.participants, full_name: a.participants?.user?.full_name || a.participants?.full_name || '' }
+      }));
+      setAssignments(mappedAssignments || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

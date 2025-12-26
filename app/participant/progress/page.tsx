@@ -45,27 +45,30 @@ export default function ParticipantProgressPage() {
 
       const { data: participantData, error: participantError } = await supabase
         .from('participants')
-        .select('*')
+        .select('*, user:users(full_name)')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (participantError) throw participantError;
-      setParticipant(participantData);
+      const pData = participantData as any;
+      setParticipant(pData ? { ...pData, full_name: pData.user?.full_name || pData.full_name || '' } : null);
 
       if (participantData) {
         const { data: skillsData, error: skillsError } = await supabase
-          .from('participant_skills')
+          .from('participant_progress')
           .select('*, skills(*)')
           .eq('participant_id', participantData.id)
+          .not('skill_id','is', null)
           .order('achieved_date', { ascending: false });
 
         if (skillsError) throw skillsError;
         setAchievedSkills(skillsData || []);
 
         const { data: levelsData, error: levelsError } = await supabase
-          .from('participant_levels')
+          .from('participant_progress')
           .select('*, levels(*)')
           .eq('participant_id', participantData.id)
+          .not('level_id','is', null)
           .order('achieved_date', { ascending: false });
 
         if (levelsError) throw levelsError;

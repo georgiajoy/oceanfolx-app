@@ -46,8 +46,9 @@ export default function VolunteerSessionsPage() {
       if (sessionsError) throw sessionsError;
 
       const { data: signupsData } = await supabase
-        .from('lesson_signups')
-        .select('session_id');
+        .from('session_participants')
+        .select('session_id')
+        .eq('status', 'signed_up');
 
       const signupCounts = (signupsData || []).reduce((acc, signup) => {
         acc[signup.session_id] = (acc[signup.session_id] || 0) + 1;

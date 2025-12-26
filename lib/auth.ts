@@ -2,7 +2,7 @@ import { supabase, UserProfile, UserRole } from './supabase';
 
 function phoneToEmail(phone: string): string {
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  return `${cleanPhone}@swimprogram.local`;
+  return `p${cleanPhone}@gmail.com`;
 }
 
 export async function signInWithPhone(phone: string, password: string) {

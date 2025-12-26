@@ -52,17 +52,26 @@ export default function AdminParticipantsPage() {
       setLoading(true);
       const { data: participantsData, error: participantsError } = await supabase
         .from('participants')
-        .select('*')
-        .order('full_name');
+        .select('*, user:users(full_name)');
 
       if (participantsError) throw participantsError;
 
+      // Map users.full_name onto participant.full_name for backwards compatibility and client-side sort
+      const mappedParticipants = (participantsData || []).map((p: any) => ({
+        ...p,
+        full_name: p.user?.full_name || p.full_name || ''
+      }));
+
+      // Sort by full_name on client since participants.full_name was moved to users
+      mappedParticipants.sort((a: any, b: any) => a.full_name.localeCompare(b.full_name));
+
       const participantsWithSkills = await Promise.all(
-        (participantsData || []).map(async (participant) => {
+        (mappedParticipants || []).map(async (participant) => {
           const { data: skillsData } = await supabase
-            .from('participant_skills')
+            .from('participant_progress')
             .select('skill:skills(name_en, name_id, order_number)')
             .eq('participant_id', participant.id)
+            .not('skill_id', 'is', null)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();

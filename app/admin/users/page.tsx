@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getCurrentUser, getUserProfile, signUpWithPhone } from '@/lib/auth';
+import { getCurrentUser, getUserProfile } from '@/lib/auth';
+import { createUserAction } from './actions';
 import { supabase, Language, UserProfile, UserRole } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -82,37 +83,30 @@ export default function UsersManagementPage() {
     }
 
     try {
-      const authData = await signUpWithPhone(
+      // Use server action to create user (uses service role, bypasses RLS)
+      const result = await createUserAction(
         formData.phone,
         formData.password,
         formData.role,
+        formData.full_name,
+        formData.emergency_contact_name,
+        formData.emergency_contact_phone,
         language
       );
 
-      if (formData.role === 'participant' && authData.user) {
-        const { error: participantError } = await supabase
-          .from('participants')
-          .insert({
-            user_id: authData.user.id,
-            full_name: formData.full_name,
-            emergency_contact_name: formData.emergency_contact_name,
-            emergency_contact_phone: formData.emergency_contact_phone,
-          });
-
-        if (participantError) throw participantError;
+      if (result.success) {
+        setFormData({
+          phone: '',
+          password: '',
+          role: 'participant',
+          full_name: '',
+          emergency_contact_name: '',
+          emergency_contact_phone: '',
+        });
+        setIsDialogOpen(false);
+        setSuccessMessage('User created successfully!');
+        loadUsers();
       }
-
-      setFormData({
-        phone: '',
-        password: '',
-        role: 'participant',
-        full_name: '',
-        emergency_contact_name: '',
-        emergency_contact_phone: '',
-      });
-      setIsDialogOpen(false);
-      setSuccessMessage('User created successfully!');
-      loadUsers();
     } catch (err: any) {
       setError(err.message || 'Failed to create user');
     }
@@ -141,7 +135,8 @@ export default function UsersManagementPage() {
 
   const filteredUsers = users.filter(u =>
     u.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.role.toLowerCase().includes(searchTerm.toLowerCase())
+    u.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   function getRoleBadgeVariant(role: UserRole) {
@@ -215,17 +210,17 @@ export default function UsersManagementPage() {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Full Name</Label>
+                <Input
+                  id="full_name"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  required
+                />
+              </div>
               {formData.role === 'participant' && (
                 <>
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Full Name</Label>
-                    <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      required
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
                     <Input
@@ -295,6 +290,7 @@ export default function UsersManagementPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Full Name</TableHead>
                   <TableHead>Phone Number</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Language</TableHead>
@@ -305,13 +301,14 @@ export default function UsersManagementPage() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                       {t('no_data')}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredUsers.map((user) => (
                     <TableRow key={user.id}>
+                      <TableCell>{user.full_name || '—'}</TableCell>
                       <TableCell className="font-medium">{user.phone || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role)}>

@@ -53,26 +53,22 @@ export default function SessionCheckInPage() {
         }
       }
 
-      const [sessionResult, signupsResult, attendanceResult] = await Promise.all([
+      const [sessionResult, spResult] = await Promise.all([
         supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle(),
         supabase
-          .from('lesson_signups')
-          .select('*, participant:participants(*)')
+          .from('session_participants')
+          .select('*, participant:participants(*, user:users(full_name))')
           .eq('session_id', sessionId)
           .order('signed_up_at'),
-        supabase
-          .from('attendance')
-          .select('*, participant:participants(*)')
-          .eq('session_id', sessionId),
       ]);
 
       if (sessionResult.error) throw sessionResult.error;
-      if (signupsResult.error) throw signupsResult.error;
-      if (attendanceResult.error) throw attendanceResult.error;
+      if (spResult.error) throw spResult.error;
 
       setSession(sessionResult.data);
-      setSignups(signupsResult.data as SignupWithParticipant[] || []);
-      setAttendance(attendanceResult.data as AttendanceWithParticipant[] || []);
+      const spAll = spResult.data || [];
+      setSignups((spAll as any[]).filter(s => s.status === 'signed_up'));
+      setAttendance((spAll as any[]).filter(s => s.status !== 'signed_up'));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -82,26 +78,16 @@ export default function SessionCheckInPage() {
 
   async function confirmAttendance(participantId: string) {
     try {
-      const existing = attendance.find(a => a.participant_id === participantId);
-
-      if (existing) {
-        await supabase
-          .from('attendance')
-          .update({
-            status: 'present',
-            validated_by_volunteer_id: volunteerId,
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('attendance')
-          .insert({
-            session_id: sessionId,
-            participant_id: participantId,
-            status: 'present',
-            validated_by_volunteer_id: volunteerId,
-          });
-      }
+      await supabase.from('session_participants').upsert(
+        {
+          session_id: sessionId,
+          participant_id: participantId,
+          status: 'present',
+          validated_by_volunteer_id: volunteerId,
+          marked_at: new Date().toISOString(),
+        },
+        { onConflict: ['session_id', 'participant_id'] }
+      );
 
       loadData();
     } catch (error) {
@@ -111,26 +97,16 @@ export default function SessionCheckInPage() {
 
   async function markAbsent(participantId: string) {
     try {
-      const existing = attendance.find(a => a.participant_id === participantId);
-
-      if (existing) {
-        await supabase
-          .from('attendance')
-          .update({
-            status: 'absent',
-            validated_by_volunteer_id: volunteerId,
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('attendance')
-          .insert({
-            session_id: sessionId,
-            participant_id: participantId,
-            status: 'absent',
-            validated_by_volunteer_id: volunteerId,
-          });
-      }
+      await supabase.from('session_participants').upsert(
+        {
+          session_id: sessionId,
+          participant_id: participantId,
+          status: 'absent',
+          validated_by_volunteer_id: volunteerId,
+          marked_at: new Date().toISOString(),
+        },
+        { onConflict: ['session_id', 'participant_id'] }
+      );
 
       loadData();
     } catch (error) {
@@ -213,7 +189,7 @@ export default function SessionCheckInPage() {
                   <div className="flex items-center gap-3">
                     <UserCheck className="h-5 w-5 text-orange-600" />
                     <div>
-                      <div className="font-medium">{att.participant.full_name}</div>
+                      <div className="font-medium">{att.participant.user?.full_name || att.participant.full_name}</div>
                       <div className="text-xs text-gray-600">Self checked-in</div>
                     </div>
                   </div>
@@ -261,7 +237,7 @@ export default function SessionCheckInPage() {
                   <div className="flex items-center gap-3">
                     <Users className="h-5 w-5 text-blue-600" />
                     <div>
-                      <div className="font-medium">{signup.participant.full_name}</div>
+                      <div className="font-medium">{signup.participant.user?.full_name || signup.participant.full_name}</div>
                       <div className="text-xs text-gray-600">Signed up for lesson</div>
                     </div>
                   </div>
@@ -309,7 +285,7 @@ export default function SessionCheckInPage() {
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <div>
-                      <div className="font-medium">{att.participant.full_name}</div>
+                      <div className="font-medium">{att.participant.user?.full_name || att.participant.full_name}</div>
                       <div className="text-xs text-gray-600">Attendance confirmed</div>
                     </div>
                   </div>
@@ -347,7 +323,7 @@ export default function SessionCheckInPage() {
                   <div className="flex items-center gap-3">
                     <XCircle className="h-5 w-5 text-red-600" />
                     <div>
-                      <div className="font-medium">{att.participant.full_name}</div>
+                      <div className="font-medium">{att.participant.user?.full_name || att.participant.full_name}</div>
                       <div className="text-xs text-gray-600">Marked as absent</div>
                     </div>
                   </div>

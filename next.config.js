@@ -7,6 +7,9 @@ const nextConfig = {
   swcMinify: false,
   experimental: {
     esmExternals: 'loose',
+    serverActions: {
+      enabled: true,
+    },
   },
 };
 

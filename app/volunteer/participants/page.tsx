@@ -52,17 +52,24 @@ export default function VolunteerParticipantsPage() {
       setLoading(true);
       const { data: participantsData, error: participantsError } = await supabase
         .from('participants')
-        .select('*')
-        .order('full_name');
+        .select('*, user:users(full_name)');
 
       if (participantsError) throw participantsError;
 
+      const mappedParticipants = (participantsData || []).map((p: any) => ({
+        ...p,
+        full_name: p.user?.full_name || p.full_name || ''
+      }));
+
+      mappedParticipants.sort((a: any, b: any) => a.full_name.localeCompare(b.full_name));
+
       const participantsWithSkills = await Promise.all(
-        (participantsData || []).map(async (participant) => {
+        (mappedParticipants || []).map(async (participant) => {
           const { data: skillsData } = await supabase
-            .from('participant_skills')
+            .from('participant_progress')
             .select('skill:skills(name_en, name_id, order_number)')
             .eq('participant_id', participant.id)
+            .not('skill_id', 'is', null)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();

@@ -1,0 +1,75 @@
+'use server';
+
+import { createClient } from '@supabase/supabase-js';
+import { UserRole, Language } from '@/lib/supabase';
+
+function phoneToEmail(phone: string): string {
+  const cleanPhone = phone.replace(/[^0-9+]/g, '');
+  return `${cleanPhone}@oceanfolx.org`;
+}
+
+export async function createUserAction(
+  phone: string,
+  password: string,
+  role: UserRole,
+  fullName: string,
+  emergencyContactName?: string,
+  emergencyContactPhone?: string,
+  preferredLanguage: Language = 'en'
+) {
+  // Use service role key to bypass RLS
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY (service role key) is not set. Add it to your environment (e.g., in .env.local) as SUPABASE_SERVICE_ROLE_KEY and restart the dev server.');
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+
+  const email = phoneToEmail(phone);
+
+  try {
+    // Create auth user
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('Failed to create auth user');
+
+    // Insert into users table with service role (bypasses RLS)
+    const { error: userError } = await supabase.from('users').insert({
+      id: authData.user.id,
+      role,
+      preferred_language: preferredLanguage,
+      phone,
+      full_name: fullName,
+    });
+
+    if (userError) throw userError;
+
+    // Create participant record if role is participant
+    if (role === 'participant') {
+      const { error: participantError } = await supabase.from('participants').insert({
+        user_id: authData.user.id,
+        emergency_contact_name: emergencyContactName || '',
+        emergency_contact_phone: emergencyContactPhone || '',
+      });
+
+      if (participantError) throw participantError;
+    }
+
+    return { success: true, userId: authData.user.id };
+  } catch (error: any) {
+    console.error('Error creating user:', error);
+    throw new Error(error.message || 'Failed to create user');
+  }
+}

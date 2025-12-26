@@ -17,6 +17,7 @@ export interface UserProfile {
   id: string;
   role: UserRole;
   preferred_language: Language;
+  full_name?: string | null;
   phone: string | null;
   created_at: string;
 }
@@ -42,14 +43,21 @@ export interface Session {
   created_at: string;
 }
 
-export interface Attendance {
+export interface SessionParticipant {
   id: string;
   session_id: string;
   participant_id: string;
-  status: 'present' | 'absent' | 'self_reported';
+  status: 'signed_up' | 'present' | 'absent' | 'self_reported';
+  signed_up_at: string;
+  marked_at: string | null;
   validated_by_volunteer_id: string | null;
+  notes: string;
   created_at: string;
+  updated_at: string;
 }
+
+// Backward compatibility alias
+export type Attendance = SessionParticipant;
 
 export interface Level {
   id: string;
@@ -72,25 +80,20 @@ export interface Skill {
   created_at: string;
 }
 
-export interface ParticipantSkill {
+export interface ParticipantProgress {
   id: string;
   participant_id: string;
-  skill_id: string;
-  achieved_date: string | null;
-  validated_by_volunteer_id: string | null;
-  notes: string;
-  created_at: string;
+  skill_id?: string | null;
+  level_id?: string | null;
+  achieved_date?: string | null;
+  validated_by_volunteer_id?: string | null;
+  notes?: string;
+  created_at?: string;
 }
 
-export interface ParticipantLevel {
-  id: string;
-  participant_id: string;
-  level_id: string;
-  achieved_date: string | null;
-  validated_by_volunteer_id: string | null;
-  notes: string;
-  created_at: string;
-}
+// Backward-compatible aliases
+export type ParticipantSkill = ParticipantProgress;
+export type ParticipantLevel = ParticipantProgress;
 
 export interface GearType {
   id: string;

@@ -59,11 +59,12 @@ export default function GearAssignmentsPage() {
 
       const { data: participantsData, error: participantsError } = await supabase
         .from('participants')
-        .select('*')
-        .order('full_name');
+        .select('*, user:users(full_name)');
 
       if (participantsError) throw participantsError;
-      setParticipants(participantsData || []);
+      const mapped = (participantsData || []).map((p: any) => ({ ...p, full_name: p.user?.full_name || p.full_name || '' }));
+      mapped.sort((a: any, b: any) => a.full_name.localeCompare(b.full_name));
+      setParticipants(mapped || []);
 
       const { data: inventoryData, error: inventoryError } = await supabase
         .from('gear_inventory')

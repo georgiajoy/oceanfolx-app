@@ -37,12 +37,13 @@ export default function ParticipantAttendancePage() {
 
       const { data: participantData, error: participantError } = await supabase
         .from('participants')
-        .select('*')
+        .select('*, user:users(full_name)')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (participantError) throw participantError;
-      setParticipant(participantData);
+      const pData = participantData as any;
+      setParticipant(pData ? { ...pData, full_name: pData.user?.full_name || pData.full_name || '' } : null);
 
       if (participantData) {
         const today = new Date().toISOString().split('T')[0];
