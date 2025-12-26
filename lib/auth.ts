@@ -1,5 +1,11 @@
 import { supabase, UserProfile, UserRole } from './supabase';
 
+// NOTE: This email format is only for internal use with Supabase Auth.
+// This is a temporary workaround since Supabase Auth only supports phone auth through
+// third-party providers (e.g., Twilio), which are pay-per-use services.
+// By converting phone numbers to unique email addresses, we can use
+// Supabase's built-in email/password auth while still allowing users
+// to sign up/sign in using their phone numbers.
 function phoneToEmail(phone: string): string {
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
   return `p${cleanPhone}@gmail.com`;
