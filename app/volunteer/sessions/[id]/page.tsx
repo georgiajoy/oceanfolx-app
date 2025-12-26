@@ -11,8 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle, UserCheck, Users } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
+interface ParticipantWithUser extends Participant {
+  user?: {
+    full_name?: string;
+  };
+}
+
 interface AttendanceWithParticipant extends Attendance {
-  participant: Participant;
+  participant: ParticipantWithUser;
 }
 
 interface LessonSignup {
@@ -23,7 +29,7 @@ interface LessonSignup {
 }
 
 interface SignupWithParticipant extends LessonSignup {
-  participant: Participant;
+  participant: ParticipantWithUser;
 }
 
 export default function SessionCheckInPage() {

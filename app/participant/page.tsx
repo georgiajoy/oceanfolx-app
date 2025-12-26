@@ -123,6 +123,8 @@ export default function ParticipantDashboard() {
     if (participant) {
       setParticipant({ ...participant, profile_photo_url: url });
     }
+    // Reload data to ensure we have the latest photo URL
+    loadData();
   }
 
   return (

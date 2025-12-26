@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Award, User, Plus, X, Calendar, Edit, Save } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { ProfilePhotoUpload } from '@/components/ProfilePhotoUpload';
 
 interface ParticipantSkillWithDetails extends ParticipantSkill {
   skill: Skill;
@@ -239,6 +240,12 @@ export default function VolunteerParticipantDetailPage() {
   const assignedLevelIds = participantLevels.map(pl => pl.level_id);
   const availableLevels = allLevels.filter(l => !assignedLevelIds.includes(l.id));
 
+  function handlePhotoUpdate(url: string) {
+    if (participant) {
+      setParticipant({ ...participant, profile_photo_url: url });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -288,6 +295,18 @@ export default function VolunteerParticipantDetailPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center gap-4 mb-6">
+            <ProfilePhotoUpload
+              participantId={participant.id}
+              currentPhotoUrl={participant.profile_photo_url}
+              onPhotoUpdate={handlePhotoUpdate}
+              size="md"
+            />
+            <div>
+              <div className="font-semibold text-lg">{participant.full_name}</div>
+              <div className="text-sm text-gray-600">Profile photo</div>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm text-gray-600">Full Name</Label>

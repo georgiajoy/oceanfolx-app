@@ -77,11 +77,18 @@ export default function GearAssignmentsPage() {
 
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('gear_assignments')
-        .select('*, participants(*), gear_inventory(*, gear_types(*))')
+        .select('*, participants(*, user:users(full_name)), gear_inventory(*, gear_types(*))')
         .order('assigned_date', { ascending: false });
 
       if (assignmentsError) throw assignmentsError;
-      setAssignments(assignmentsData || []);
+      const mappedAssignments = (assignmentsData || []).map((a: any) => ({
+        ...a,
+        participants: {
+          ...a.participants,
+          full_name: a.participants?.user?.full_name || a.participants?.full_name || '',
+        },
+      }));
+      setAssignments(mappedAssignments || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

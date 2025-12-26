@@ -50,7 +50,7 @@ export default function ParticipantAttendancePage() {
 
         const [attendanceResult, todaySessionsResult] = await Promise.all([
           supabase
-            .from('attendance')
+            .from('session_participants')
             .select('*, session:sessions(*)')
             .eq('participant_id', participantData.id)
             .order('created_at', { ascending: false }),
@@ -92,7 +92,7 @@ export default function ParticipantAttendancePage() {
       }
 
       const { error } = await supabase
-        .from('attendance')
+        .from('session_participants')
         .insert({
           session_id: sessionId,
           participant_id: participant.id,
@@ -147,9 +147,11 @@ export default function ParticipantAttendancePage() {
           <CardContent className="relative">
             <div className="space-y-4">
               {todaySessions.map((session, index) => {
-                const hasCheckedIn = attendance.some(
-                  a => a.session_id === session.id
-                );
+                const record = attendance.find(a => a.session_id === session.id);
+                const isValidated = record?.status === 'present';
+                const isSelfReported = record?.status === 'self_reported';
+                const disabled = isValidated || isSelfReported;
+
                 return (
                   <div
                     key={session.id}
@@ -167,13 +169,15 @@ export default function ParticipantAttendancePage() {
                     </div>
                     <Button
                       onClick={() => handleSelfCheckIn(session.id)}
-                      disabled={hasCheckedIn}
-                      className={hasCheckedIn
+                      disabled={disabled}
+                      className={isValidated
                         ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md"
+                        : isSelfReported
+                        ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md"
                         : "bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] hover:from-[#3AA8BC] hover:to-[#2A9FB4] text-white shadow-md"}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {hasCheckedIn ? t('validated') : t('check_in')}
+                      {isValidated ? t('validated') : isSelfReported ? t('awaiting_validation') : t('check_in')}
                     </Button>
                   </div>
                 );

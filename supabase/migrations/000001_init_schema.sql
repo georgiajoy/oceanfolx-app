@@ -16,16 +16,16 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 --  - id: uuid (primary, references auth.users)
 --  - role: text (admin, volunteer, participant)
 --  - preferred_language: text (en, id)
---  - phone: contact number (optional)
---  - full_name: display name (optional)
+--  - phone: contact number (not currently used for auth)
+--  - full_name: display name
 --  - created_at: timestamp
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role text NOT NULL CHECK (role IN ('admin','volunteer','participant')),
   preferred_language text NOT NULL DEFAULT 'en' CHECK (preferred_language IN ('en','id')),
-  phone text,
-  full_name text,
+  phone text NOT NULL,
+  full_name text NOT NULL,
   created_at timestamptz DEFAULT now()
 );
 
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Columns:
 --  - id: uuid (primary)
 --  - user_id: uuid (references users)
---  - emergency_contact_name / emergency_contact_phone
+--  - emergency_contact_name / emergency_contact_phone (optional)
 --  - shoe_size / clothing_size: optional sizing for gear
 --  - profile_photo_url: optional
 --  - created_at: timestamp
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   date date NOT NULL,
   time time NOT NULL,
-  type text NOT NULL DEFAULT 'swim_lesson',
+  type text NOT NULL DEFAULT 'Swim Lesson',
   created_at timestamptz DEFAULT now()
 );
 
@@ -177,6 +177,14 @@ CREATE TABLE IF NOT EXISTS gear_assignments (
 );
 
 -- ============================================================================
+-- Create storage bucket for profile photos
+-- Allows authenticated users to upload and view profile photos
+-- ============================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('profile-photos', 'profile-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
 -- INDEXES
 -- ============================================================================
 CREATE INDEX IF NOT EXISTS idx_participants_user_id ON participants(user_id);
@@ -206,57 +214,11 @@ ALTER TABLE participant_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gear_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gear_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gear_assignments ENABLE ROW LEVEL SECURITY;
--- ============================================================================
--- DROP OLD POLICIES
--- ============================================================================
-DROP POLICY IF EXISTS "Admins can read all users" ON users;
-DROP POLICY IF EXISTS "Admins can insert users" ON users;
-DROP POLICY IF EXISTS "Admins can update users" ON users;
-DROP POLICY IF EXISTS "Users can read own user record" ON users;
-DROP POLICY IF EXISTS "Users can update own preferred_language" ON users;
-DROP POLICY IF EXISTS "Admins can read all participants" ON participants;
-DROP POLICY IF EXISTS "Volunteers can read all participants" ON participants;
-DROP POLICY IF EXISTS "Participants can read own participant record" ON participants;
-DROP POLICY IF EXISTS "Admins can insert participants" ON participants;
-DROP POLICY IF EXISTS "Admins can update participants" ON participants;
-DROP POLICY IF EXISTS "Participants can update own profile photo" ON participants;
-DROP POLICY IF EXISTS "Admins can delete participants" ON participants;
-DROP POLICY IF EXISTS "Admins can insert sessions" ON sessions;
-DROP POLICY IF EXISTS "Admins can update sessions" ON sessions;
-DROP POLICY IF EXISTS "Admins can delete sessions" ON sessions;
-DROP POLICY IF EXISTS "Authenticated users can read sessions" ON sessions;
-DROP POLICY IF EXISTS "Admins can read all session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Volunteers can read all session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Participants can read own session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Admins can insert session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Volunteers can insert session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Participants can sign up for sessions" ON session_participants;
-DROP POLICY IF EXISTS "Admins can update session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Volunteers can update session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Admins can delete session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Volunteers can delete session_participants" ON session_participants;
-DROP POLICY IF EXISTS "Participants can cancel own signups" ON session_participants;
-DROP POLICY IF EXISTS "Admins can manage levels" ON levels;
-DROP POLICY IF EXISTS "Authenticated users can read levels" ON levels;
-DROP POLICY IF EXISTS "Admins can manage skills" ON skills;
-DROP POLICY IF EXISTS "Authenticated users can read skills" ON skills;
-DROP POLICY IF EXISTS "participant_progress_select" ON participant_progress;
-DROP POLICY IF EXISTS "participant_progress_insert" ON participant_progress;
-DROP POLICY IF EXISTS "participant_progress_update" ON participant_progress;
-DROP POLICY IF EXISTS "participant_progress_delete" ON participant_progress;
-DROP POLICY IF EXISTS "Admins can manage gear_types" ON gear_types;
-DROP POLICY IF EXISTS "Authenticated users can read gear_types" ON gear_types;
-DROP POLICY IF EXISTS "Admins can manage gear_inventory" ON gear_inventory;
-DROP POLICY IF EXISTS "Authenticated users can read gear_inventory" ON gear_inventory;
-DROP POLICY IF EXISTS "Admins can manage gear_assignments" ON gear_assignments;
 
 -- ============================================================================
 -- CREATE SECURITY DEFINER HELPER FUNCTIONS
 -- These bypass RLS to avoid infinite recursion
 -- ============================================================================
-
-DROP FUNCTION IF EXISTS is_admin(uuid) CASCADE;
-DROP FUNCTION IF EXISTS is_volunteer(uuid) CASCADE;
 
 CREATE FUNCTION is_admin(user_id uuid)
 RETURNS boolean
@@ -278,8 +240,18 @@ AS $$
   SELECT COALESCE((SELECT role = 'volunteer' FROM users WHERE id = user_id), false);
 $$;
 
+CREATE FUNCTION is_participant_of(user_id uuid, participant_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT COALESCE((SELECT EXISTS(SELECT 1 FROM participants WHERE id = participant_id AND user_id = user_id)), false);
+$$;
+
 -- ============================================================================
--- RECREATE USERS TABLE POLICIES
+-- CREATE USERS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Users can read own user record"
@@ -289,6 +261,10 @@ CREATE POLICY "Users can read own user record"
 CREATE POLICY "Admins can read all users"
   ON users FOR SELECT TO authenticated
   USING (is_admin(auth.uid()));
+
+CREATE POLICY "Volunteers can read all users"
+  ON users FOR SELECT TO authenticated
+  USING (is_volunteer(auth.uid()));
 
 CREATE POLICY "Admins can insert users"
   ON users FOR INSERT TO authenticated
@@ -305,7 +281,7 @@ CREATE POLICY "Users can update own preferred_language"
   WITH CHECK (id = auth.uid());
 
 -- ============================================================================
--- RECREATE PARTICIPANTS TABLE POLICIES
+-- CREATE PARTICIPANTS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Participants can read own participant record"
@@ -329,6 +305,11 @@ CREATE POLICY "Admins can update participants"
   USING (is_admin(auth.uid()))
   WITH CHECK (is_admin(auth.uid()));
 
+CREATE POLICY "Volunteers can update participants"
+  ON participants FOR UPDATE TO authenticated
+  USING (is_volunteer(auth.uid()))
+  WITH CHECK (is_volunteer(auth.uid()));
+
 CREATE POLICY "Participants can update own profile photo"
   ON participants FOR UPDATE TO authenticated
   USING (user_id = auth.uid())
@@ -339,7 +320,7 @@ CREATE POLICY "Admins can delete participants"
   USING (is_admin(auth.uid()));
 
 -- ============================================================================
--- RECREATE SESSIONS TABLE POLICIES
+-- CREATE SESSIONS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Authenticated users can read sessions"
@@ -360,7 +341,7 @@ CREATE POLICY "Admins can delete sessions"
   USING (is_admin(auth.uid()));
 
 -- ============================================================================
--- RECREATE SESSION_PARTICIPANTS TABLE POLICIES
+-- CREATE SESSION_PARTICIPANTS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Participants can read own session_participants"
@@ -378,26 +359,14 @@ CREATE POLICY "Volunteers can read all session_participants"
 CREATE POLICY "Participants can sign up for sessions"
   ON session_participants FOR INSERT TO authenticated
   WITH CHECK (
-    EXISTS (SELECT 1 FROM participants p WHERE p.id = session_participants.participant_id AND p.user_id = auth.uid())
+    is_participant_of(auth.uid(), participant_id)
     AND status = 'signed_up'
-  );
-
-CREATE POLICY "Participants can insert self-reported attendance"
-  ON session_participants FOR INSERT TO authenticated
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM participants p WHERE p.id = session_participants.participant_id AND p.user_id = auth.uid())
-    AND status = 'self_reported'
   );
 
 CREATE POLICY "Participants can update own session_participants"
   ON session_participants FOR UPDATE TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM participants p WHERE p.id = session_participants.participant_id AND p.user_id = auth.uid())
-  )
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM participants p WHERE p.id = session_participants.participant_id AND p.user_id = auth.uid())
-    AND status IN ('self_reported','signed_up')
-  );
+  USING (is_participant_of(auth.uid(), participant_id))
+  WITH CHECK (status IN ('self_reported','signed_up'));
 
 CREATE POLICY "Admins can insert session_participants"
   ON session_participants FOR INSERT TO authenticated
@@ -409,12 +378,12 @@ CREATE POLICY "Volunteers can insert session_participants"
 
 CREATE POLICY "Admins can update session_participants"
   ON session_participants FOR UPDATE TO authenticated
-  USING (is_admin(auth.uid()))
+  USING (true)
   WITH CHECK (is_admin(auth.uid()));
 
 CREATE POLICY "Volunteers can update session_participants"
   ON session_participants FOR UPDATE TO authenticated
-  USING (is_volunteer(auth.uid()))
+  USING (true)
   WITH CHECK (is_volunteer(auth.uid()));
 
 CREATE POLICY "Participants can cancel own signups"
@@ -433,7 +402,7 @@ CREATE POLICY "Volunteers can delete session_participants"
   USING (is_volunteer(auth.uid()));
 
 -- ============================================================================
--- RECREATE LEVELS TABLE POLICIES
+-- CREATE LEVELS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Authenticated users can read levels"
@@ -446,7 +415,7 @@ CREATE POLICY "Admins can manage levels"
   WITH CHECK (is_admin(auth.uid()));
 
 -- ============================================================================
--- RECREATE SKILLS TABLE POLICIES
+-- CREATE SKILLS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Authenticated users can read skills"
@@ -459,7 +428,7 @@ CREATE POLICY "Admins can manage skills"
   WITH CHECK (is_admin(auth.uid()));
 
 -- ============================================================================
--- RECREATE PARTICIPANT_PROGRESS TABLE POLICIES
+-- CREATE PARTICIPANT_PROGRESS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "participant_progress_select"
@@ -488,7 +457,7 @@ CREATE POLICY "participant_progress_delete"
   USING (is_admin(auth.uid()) OR is_volunteer(auth.uid()));
 
 -- ============================================================================
--- RECREATE GEAR_TYPES TABLE POLICIES
+-- CREATE GEAR_TYPES TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Authenticated users can read gear_types"
@@ -501,7 +470,7 @@ CREATE POLICY "Admins can manage gear_types"
   WITH CHECK (is_admin(auth.uid()));
 
 -- ============================================================================
--- RECREATE GEAR_INVENTORY TABLE POLICIES
+-- CREATE GEAR_INVENTORY TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Authenticated users can read gear_inventory"
@@ -514,12 +483,40 @@ CREATE POLICY "Admins can manage gear_inventory"
   WITH CHECK (is_admin(auth.uid()));
 
 -- ============================================================================
--- RECREATE GEAR_ASSIGNMENTS TABLE POLICIES
+-- CREATE GEAR_ASSIGNMENTS TABLE POLICIES
 -- ============================================================================
 
 CREATE POLICY "Admins can manage gear_assignments"
   ON gear_assignments FOR ALL TO authenticated
   USING (is_admin(auth.uid()))
   WITH CHECK (is_admin(auth.uid()));
+
+-- ============================================================================
+-- CREATE STORAGE OBJECT POLICIES
+-- ============================================================================
+CREATE POLICY "Users can upload own profile photo"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'profile-photos' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can update own profile photo"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'profile-photos' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can delete own profile photo"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'profile-photos' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+CREATE POLICY "Public can view profile photos"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'profile-photos');
 
 COMMIT;

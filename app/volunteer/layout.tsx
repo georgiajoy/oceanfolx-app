@@ -33,7 +33,8 @@ function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
       }
 
       const userProfile = await getUserProfile(user.id);
-      if (!userProfile || userProfile.role !== 'volunteer') {
+      const allowed = userProfile && (userProfile.role === 'volunteer' || userProfile.role === 'admin');
+      if (!allowed) {
         router.push('/');
         return;
       }
