@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
@@ -45,11 +45,7 @@ export default function ParticipantLessonsPage() {
   const { language } = useLanguage();
   const t = useTranslation(language);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const user = await getCurrentUser();
@@ -92,7 +88,11 @@ export default function ParticipantLessonsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function handleSignUp(sessionId: string) {
     if (!participantId) return;
@@ -157,7 +157,7 @@ export default function ParticipantLessonsPage() {
             status: 'self_reported',
             marked_at: new Date().toISOString(),
           },
-          { onConflict: ['session_id', 'participant_id'] }
+          { onConflict: 'session_id,participant_id' }
         );
 
       if (checkInError) throw checkInError;

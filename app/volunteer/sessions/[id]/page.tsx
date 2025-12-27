@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { getCurrentUser, getUserProfile } from '@/lib/auth';
 import { supabase, Language, Session, Participant, Attendance } from '@/lib/supabase';
@@ -53,11 +53,7 @@ export default function SessionCheckInPage() {
   const [addingParticipant, setAddingParticipant] = useState(false);
   const t = useTranslation(language);
 
-  useEffect(() => {
-    loadData();
-  }, [sessionId]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const user = await getCurrentUser();
@@ -96,7 +92,11 @@ export default function SessionCheckInPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [sessionId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function confirmAttendance(participantId: string) {
     try {
@@ -108,7 +108,7 @@ export default function SessionCheckInPage() {
           validated_by_volunteer_id: volunteerId,
           marked_at: new Date().toISOString(),
         },
-        { onConflict: ['session_id', 'participant_id'] }
+        { onConflict: 'session_id,participant_id' }
       );
 
       loadData();
@@ -127,7 +127,7 @@ export default function SessionCheckInPage() {
           validated_by_volunteer_id: volunteerId,
           marked_at: new Date().toISOString(),
         },
-        { onConflict: ['session_id', 'participant_id'] }
+        { onConflict: 'session_id,participant_id' }
       );
 
       loadData();
