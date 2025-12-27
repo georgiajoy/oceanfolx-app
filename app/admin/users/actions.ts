@@ -46,27 +46,13 @@ export async function createUserAction(
     if (!authData.user) throw new Error('Failed to create auth user');
 
     // Insert into users table with service role (bypasses RLS)
-    // Retry briefly if the auth user row isn't immediately visible due to race conditions
-    let userError: any = null;
-    const maxAttempts = 5;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const res = await supabase.from('users').insert({
-        id: authData.user.id,
-        role,
-        preferred_language: preferredLanguage,
-        phone,
-        full_name: fullName,
-      });
-      userError = res.error;
-      if (!userError) break;
-      // If foreign key error, wait a short time and retry
-      if (userError.code === '23503') {
-        await new Promise((r) => setTimeout(r, 250));
-        continue;
-      }
-      // Other errors should abort
-      break;
-    }
+    const { error: userError } = await supabase.from('users').insert({
+      id: authData.user.id,
+      role,
+      preferred_language: preferredLanguage,
+      phone,
+      full_name: fullName,
+    });
 
     if (userError) {
       // Cleanup: remove the auth user we created to avoid orphaned auth entries

@@ -8,8 +8,15 @@ import { useTranslation } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, AlertCircle, UserCheck, Users } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, UserCheck, Users, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ParticipantWithUser extends Participant {
   user?: {
@@ -41,6 +48,9 @@ export default function SessionCheckInPage() {
   const [attendance, setAttendance] = useState<AttendanceWithParticipant[]>([]);
   const [volunteerId, setVolunteerId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [allParticipants, setAllParticipants] = useState<ParticipantWithUser[]>([]);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string>('');
+  const [addingParticipant, setAddingParticipant] = useState(false);
   const t = useTranslation(language);
 
   useEffect(() => {
@@ -59,22 +69,28 @@ export default function SessionCheckInPage() {
         }
       }
 
-      const [sessionResult, spResult] = await Promise.all([
+      const [sessionResult, spResult, participantsResult] = await Promise.all([
         supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle(),
         supabase
           .from('session_participants')
           .select('*, participant:participants(*, user:users(full_name))')
           .eq('session_id', sessionId)
           .order('signed_up_at'),
+        supabase
+          .from('participants')
+          .select('*, user:users(full_name)')
+          .order('user(full_name)'),
       ]);
 
       if (sessionResult.error) throw sessionResult.error;
       if (spResult.error) throw spResult.error;
+      if (participantsResult.error) throw participantsResult.error;
 
       setSession(sessionResult.data);
       const spAll = spResult.data || [];
       setSignups((spAll as any[]).filter(s => s.status === 'signed_up'));
       setAttendance((spAll as any[]).filter(s => s.status !== 'signed_up'));
+      setAllParticipants(participantsResult.data as any[]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -120,12 +136,42 @@ export default function SessionCheckInPage() {
     }
   }
 
+  async function addParticipantToSession() {
+    if (!selectedParticipantId) return;
+
+    try {
+      setAddingParticipant(true);
+      await supabase.from('session_participants').insert({
+        session_id: sessionId,
+        participant_id: selectedParticipantId,
+        status: 'signed_up',
+        signed_up_at: new Date().toISOString(),
+      });
+
+      setSelectedParticipantId('');
+      loadData();
+    } catch (error) {
+      console.error('Error adding participant:', error);
+    } finally {
+      setAddingParticipant(false);
+    }
+  }
+
   const needsValidation = attendance.filter(a => a.status === 'self_reported');
   const notCheckedIn = signups.filter(
     s => !attendance.find(a => a.participant_id === s.participant_id)
   );
   const confirmedAttendance = attendance.filter(a => a.status === 'present');
   const markedAbsent = attendance.filter(a => a.status === 'absent');
+
+  // Get participants not already in this session
+  const enrolledParticipantIds = new Set([
+    ...signups.map(s => s.participant_id),
+    ...attendance.map(a => a.participant_id),
+  ]);
+  const availableParticipants = allParticipants.filter(
+    p => !enrolledParticipantIds.has(p.id)
+  );
 
   if (loading) {
     return <div className="text-center py-8">{t('loading')}</div>;
@@ -149,6 +195,42 @@ export default function SessionCheckInPage() {
           - {session.time.slice(0, 5)}
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Add Participant to Session
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Select value={selectedParticipantId} onValueChange={setSelectedParticipantId}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select a participant..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availableParticipants.map((participant) => (
+                  <SelectItem key={participant.id} value={participant.id}>
+                    {participant.user?.full_name || 'Unnamed Participant'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={addParticipantToSession}
+              disabled={!selectedParticipantId || addingParticipant}
+              className="bg-[#4FBACA] hover:bg-[#4FBACA]/90"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add to Session
+            </Button>
+          </div>
+          {availableParticipants.length === 0 && (
+            <p className="text-sm text-gray-500 mt-2">All participants are already enrolled in this session</p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
