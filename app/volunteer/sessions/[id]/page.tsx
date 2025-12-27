@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
 import { getCurrentUser, getUserProfile } from '@/lib/auth';
 import { supabase, Language, Session, Participant, Attendance } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
@@ -39,9 +38,8 @@ interface SignupWithParticipant extends LessonSignup {
   participant: ParticipantWithUser;
 }
 
-export default function SessionCheckInPage() {
-  const params = useParams();
-  const sessionId = params.id as string;
+export default function SessionCheckInPage({ params }: { params: { id: string } }) {
+  const sessionId = params.id;
   const [language, setLanguage] = useState<Language>('en');
   const [session, setSession] = useState<Session | null>(null);
   const [signups, setSignups] = useState<SignupWithParticipant[]>([]);
