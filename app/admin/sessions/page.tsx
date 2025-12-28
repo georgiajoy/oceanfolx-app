@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, ExternalLink } from 'lucide-react';
+import { Plus, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function SessionsPage() {
@@ -19,6 +20,8 @@ export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     date: '',
@@ -88,6 +91,53 @@ export default function SessionsPage() {
       loadSessions();
     } catch (err: any) {
       setError(err.message || 'Failed to create session');
+    }
+  }
+
+  function handleEditClick(session: Session) {
+    setEditingSession(session);
+    setIsEditDialogOpen(true);
+  }
+
+  async function handleUpdateSession(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSession) return;
+    setError('');
+
+    try {
+      const { error: updateError } = await supabase
+        .from('sessions')
+        .update({
+          date: editingSession.date,
+          time: editingSession.time,
+          type: editingSession.type,
+        })
+        .eq('id', editingSession.id);
+
+      if (updateError) throw updateError;
+
+      setIsEditDialogOpen(false);
+      setEditingSession(null);
+      loadSessions();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update session');
+    }
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    setError('');
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId);
+
+      if (deleteError) throw deleteError;
+
+      loadSessions();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete session');
     }
   }
 
@@ -193,12 +243,45 @@ export default function SessionsPage() {
                       <TableCell>{session.time.slice(0, 5)}</TableCell>
                       <TableCell>{session.type}</TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/admin/sessions/${session.id}`}>
-                          <Button size="sm" variant="outline">
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Manage Attendance
+                        <div className="flex gap-2 justify-end">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditClick(session)}
+                          >
+                            <Pencil className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">{t('edit')}</span>
                           </Button>
-                        </Link>
+                          <Link href={`/admin/sessions/${session.id}`}>
+                            <Button size="sm" variant="outline">
+                              <ExternalLink className="h-4 w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Manage Attendance</span>
+                              <span className="sm:hidden">Attend</span>
+                            </Button>
+                          </Link>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="destructive">
+                                <Trash2 className="h-4 w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">{t('delete')}</span>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Lesson?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this lesson? This action cannot be undone and will remove all associated attendance records and signups.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSession(session.id)}>
+                                  {t('delete')}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -209,6 +292,66 @@ export default function SessionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('edit')} Lesson</DialogTitle>
+          </DialogHeader>
+          {editingSession && (
+            <form onSubmit={handleUpdateSession} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-date">{t('date')}</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={editingSession.date}
+                  onChange={(e) => setEditingSession({ ...editingSession, date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-time">{t('time')}</Label>
+                <Input
+                  id="edit-time"
+                  type="time"
+                  value={editingSession.time}
+                  onChange={(e) => setEditingSession({ ...editingSession, time: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">{t('type')}</Label>
+                <Input
+                  id="edit-type"
+                  value={editingSession.type}
+                  onChange={(e) => setEditingSession({ ...editingSession, type: e.target.value })}
+                  required
+                />
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">{t('update')}</Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingSession(null);
+                    setError('');
+                  }}
+                >
+                  {t('cancel')}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

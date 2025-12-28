@@ -10,9 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface SkillWithLevel extends Skill {
@@ -26,6 +27,10 @@ export default function SkillsPage() {
   const [loading, setLoading] = useState(true);
   const [isLevelDialogOpen, setIsLevelDialogOpen] = useState(false);
   const [isSkillDialogOpen, setIsSkillDialogOpen] = useState(false);
+  const [isEditLevelDialogOpen, setIsEditLevelDialogOpen] = useState(false);
+  const [isEditSkillDialogOpen, setIsEditSkillDialogOpen] = useState(false);
+  const [editingLevel, setEditingLevel] = useState<Level | null>(null);
+  const [editingSkill, setEditingSkill] = useState<SkillWithLevel | null>(null);
   const [error, setError] = useState('');
   const [levelFormData, setLevelFormData] = useState({
     name_en: '',
@@ -134,6 +139,105 @@ export default function SkillsPage() {
     }
   }
 
+  function handleEditLevelClick(level: Level) {
+    setEditingLevel(level);
+    setIsEditLevelDialogOpen(true);
+  }
+
+  async function handleUpdateLevel(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingLevel) return;
+    setError('');
+
+    try {
+      const { error: updateError } = await supabase
+        .from('levels')
+        .update({
+          name_en: editingLevel.name_en,
+          name_id: editingLevel.name_id,
+          description_en: editingLevel.description_en,
+          description_id: editingLevel.description_id,
+          order_number: editingLevel.order_number,
+        })
+        .eq('id', editingLevel.id);
+
+      if (updateError) throw updateError;
+
+      setIsEditLevelDialogOpen(false);
+      setEditingLevel(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update level');
+    }
+  }
+
+  async function handleDeleteLevel(levelId: string) {
+    setError('');
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('levels')
+        .delete()
+        .eq('id', levelId);
+
+      if (deleteError) throw deleteError;
+
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete level');
+    }
+  }
+
+  function handleEditSkillClick(skill: SkillWithLevel) {
+    setEditingSkill(skill);
+    setIsEditSkillDialogOpen(true);
+  }
+
+  async function handleUpdateSkill(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSkill) return;
+    setError('');
+
+    try {
+      const { error: updateError } = await supabase
+        .from('skills')
+        .update({
+          level_id: editingSkill.level_id,
+          name_en: editingSkill.name_en,
+          name_id: editingSkill.name_id,
+          description_en: editingSkill.description_en,
+          description_id: editingSkill.description_id,
+          order_number: editingSkill.order_number,
+        })
+        .eq('id', editingSkill.id);
+
+      if (updateError) throw updateError;
+
+      setIsEditSkillDialogOpen(false);
+      setEditingSkill(null);
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update skill');
+    }
+  }
+
+  async function handleDeleteSkill(skillId: string) {
+    setError('');
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('skills')
+        .delete()
+        .eq('id', skillId);
+
+      if (deleteError) throw deleteError;
+
+      loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete skill');
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -235,12 +339,13 @@ export default function SkillsPage() {
                         <TableHead>Indonesian Name</TableHead>
                         <TableHead>English Description</TableHead>
                         <TableHead>Indonesian Description</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                   <TableBody>
                     {levels.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                           {t('no_data')}
                         </TableCell>
                       </TableRow>
@@ -252,6 +357,40 @@ export default function SkillsPage() {
                           <TableCell className="font-medium">{level.name_id}</TableCell>
                           <TableCell className="text-sm text-gray-600">{level.description_en}</TableCell>
                           <TableCell className="text-sm text-gray-600">{level.description_id}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditLevelClick(level)}
+                              >
+                                <Pencil className="h-4 w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">{t('edit')}</span>
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="destructive">
+                                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">{t('delete')}</span>
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Level?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this level? This will also affect all associated skills.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteLevel(level.id)}>
+                                      {t('delete')}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -370,12 +509,13 @@ export default function SkillsPage() {
                         <TableHead>Indonesian Name</TableHead>
                         <TableHead>English Description</TableHead>
                         <TableHead>Indonesian Description</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                   <TableBody>
                     {skills.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                           {t('no_data')}
                         </TableCell>
                       </TableRow>
@@ -390,6 +530,40 @@ export default function SkillsPage() {
                           <TableCell className="font-medium">{skill.name_id}</TableCell>
                           <TableCell className="text-sm text-gray-600">{skill.description_en}</TableCell>
                           <TableCell className="text-sm text-gray-600">{skill.description_id}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditSkillClick(skill)}
+                              >
+                                <Pencil className="h-4 w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">{t('edit')}</span>
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="destructive">
+                                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">{t('delete')}</span>
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Skill?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this skill? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteSkill(skill.id)}>
+                                      {t('delete')}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -401,6 +575,177 @@ export default function SkillsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Level Dialog */}
+      <Dialog open={isEditLevelDialogOpen} onOpenChange={setIsEditLevelDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('edit')} Level</DialogTitle>
+          </DialogHeader>
+          {editingLevel && (
+            <form onSubmit={handleUpdateLevel} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name_en">Name (English)</Label>
+                <Input
+                  id="edit-name_en"
+                  value={editingLevel.name_en}
+                  onChange={(e) => setEditingLevel({ ...editingLevel, name_en: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-name_id">Name (Indonesian)</Label>
+                <Input
+                  id="edit-name_id"
+                  value={editingLevel.name_id}
+                  onChange={(e) => setEditingLevel({ ...editingLevel, name_id: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description_en">Description (English)</Label>
+                <Textarea
+                  id="edit-description_en"
+                  value={editingLevel.description_en}
+                  onChange={(e) => setEditingLevel({ ...editingLevel, description_en: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description_id">Description (Indonesian)</Label>
+                <Textarea
+                  id="edit-description_id"
+                  value={editingLevel.description_id}
+                  onChange={(e) => setEditingLevel({ ...editingLevel, description_id: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-order_number">Order</Label>
+                <Input
+                  id="edit-order_number"
+                  type="number"
+                  min="1"
+                  value={editingLevel.order_number}
+                  onChange={(e) => setEditingLevel({ ...editingLevel, order_number: parseInt(e.target.value) })}
+                  required
+                />
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">{t('update')}</Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditLevelDialogOpen(false);
+                    setEditingLevel(null);
+                    setError('');
+                  }}
+                >
+                  {t('cancel')}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Skill Dialog */}
+      <Dialog open={isEditSkillDialogOpen} onOpenChange={setIsEditSkillDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('edit')} Skill</DialogTitle>
+          </DialogHeader>
+          {editingSkill && (
+            <form onSubmit={handleUpdateSkill} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-level_id">Level</Label>
+                <select
+                  id="edit-level_id"
+                  value={editingSkill.level_id}
+                  onChange={(e) => setEditingSkill({ ...editingSkill, level_id: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md"
+                  required
+                >
+                  <option value="">Select a level</option>
+                  {levels.map((level) => (
+                    <option key={level.id} value={level.id}>
+                      {level.name_en} / {level.name_id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-skill_name_en">Name (English)</Label>
+                <Input
+                  id="edit-skill_name_en"
+                  value={editingSkill.name_en}
+                  onChange={(e) => setEditingSkill({ ...editingSkill, name_en: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-skill_name_id">Name (Indonesian)</Label>
+                <Input
+                  id="edit-skill_name_id"
+                  value={editingSkill.name_id}
+                  onChange={(e) => setEditingSkill({ ...editingSkill, name_id: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-skill_description_en">Description (English)</Label>
+                <Textarea
+                  id="edit-skill_description_en"
+                  value={editingSkill.description_en}
+                  onChange={(e) => setEditingSkill({ ...editingSkill, description_en: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-skill_description_id">Description (Indonesian)</Label>
+                <Textarea
+                  id="edit-skill_description_id"
+                  value={editingSkill.description_id}
+                  onChange={(e) => setEditingSkill({ ...editingSkill, description_id: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-skill_order_number">Order</Label>
+                <Input
+                  id="edit-skill_order_number"
+                  type="number"
+                  min="1"
+                  value={editingSkill.order_number}
+                  onChange={(e) => setEditingSkill({ ...editingSkill, order_number: parseInt(e.target.value) })}
+                  required
+                />
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">{t('update')}</Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditSkillDialogOpen(false);
+                    setEditingSkill(null);
+                    setError('');
+                  }}
+                >
+                  {t('cancel')}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

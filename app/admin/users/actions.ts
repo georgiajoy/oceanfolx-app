@@ -89,8 +89,8 @@ export async function createUserAction(
     if (role === 'participant') {
       const { error: participantError } = await supabase.from('participants').insert({
         user_id: authData.user.id,
-        emergency_contact_name: emergencyContactName || '',
-        emergency_contact_phone: emergencyContactPhone || '',
+        emergency_contact_name: emergencyContactName || null,
+        emergency_contact_phone: emergencyContactPhone || null,
       });
 
       if (participantError) {

@@ -226,7 +226,6 @@ export default function UsersManagementPage() {
                       id="emergency_contact_name"
                       value={formData.emergency_contact_name}
                       onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -236,7 +235,6 @@ export default function UsersManagementPage() {
                       type="tel"
                       value={formData.emergency_contact_phone}
                       onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
-                      required
                     />
                   </div>
                 </>
