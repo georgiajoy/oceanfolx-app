@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import { getCurrentUser, getUserProfile } from '@/lib/auth';
 import { supabase, Language, Participant, Level, Skill, ParticipantSkill, ParticipantLevel } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
@@ -22,9 +21,8 @@ interface ParticipantLevelWithDetails extends ParticipantLevel {
   level: Level;
 }
 
-export default function AdminParticipantDetailPage() {
-  const params = useParams();
-  const participantId = params.id as string;
+export default function AdminParticipantDetailPage({ params }: { params: { id: string } }) {
+  const participantId = params.id;
   const [language, setLanguage] = useState<Language>('en');
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [participantSkills, setParticipantSkills] = useState<ParticipantSkillWithDetails[]>([]);
@@ -87,13 +85,13 @@ export default function AdminParticipantDetailPage() {
       setParticipantSkills(participantSkillsResult.data as ParticipantSkillWithDetails[] || []);
       setParticipantLevels(participantLevelsResult.data as ParticipantLevelWithDetails[] || []);
 
-      if (participantResult.data) {
+      if (mappedParticipant) {
         setParticipantForm({
-          full_name: participantResult.data.full_name || '',
-          emergency_contact_name: participantResult.data.emergency_contact_name || '',
-          emergency_contact_phone: participantResult.data.emergency_contact_phone || '',
-          shoe_size: participantResult.data.shoe_size || '',
-          clothing_size: participantResult.data.clothing_size || '',
+          full_name: mappedParticipant.full_name || '',
+          emergency_contact_name: mappedParticipant.emergency_contact_name || '',
+          emergency_contact_phone: mappedParticipant.emergency_contact_phone || '',
+          shoe_size: mappedParticipant.shoe_size || '',
+          clothing_size: mappedParticipant.clothing_size || '',
         });
       }
     } catch (error) {

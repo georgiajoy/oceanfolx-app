@@ -23,7 +23,7 @@ export default function SessionsPage() {
   const [formData, setFormData] = useState({
     date: '',
     time: '',
-    type: 'swim_lesson',
+    type: 'Swim Lesson',
   });
   const t = useTranslation(language);
 
@@ -82,7 +82,7 @@ export default function SessionsPage() {
       setFormData({
         date: '',
         time: '',
-        type: 'swim_lesson',
+        type: 'Swim Lesson',
       });
       setIsDialogOpen(false);
       loadSessions();
