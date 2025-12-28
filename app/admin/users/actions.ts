@@ -1,11 +1,76 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { UserRole, Language } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createServerClientSupabase } from '@/lib/supabase/server';
+import { normalizePhoneToDigits, phoneToEmail } from '@/lib/phone';
 
-function phoneToEmail(phone: string): string {
-  const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  return `p${cleanPhone}@gmail.com`;
+/**
+ * DEBUG: Temporary action to verify server-side auth is working
+ */
+export async function whoAmIAction() {
+  try {
+    const supabase = createServerClientSupabase();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      return { 
+        hasUser: false, 
+        error: authError.message 
+      };
+    }
+    
+    if (!user) {
+      return { 
+        hasUser: false, 
+        error: 'No user session found' 
+      };
+    }
+    
+    return {
+      hasUser: true,
+      userId: user.id,
+      email: user.email,
+    };
+  } catch (err) {
+    return {
+      hasUser: false,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Authorization guard: ensures the caller is an authenticated admin
+ * Throws error if not authenticated or not an admin
+ */
+async function assertCallerIsAdmin(): Promise<string> {
+  const supabase = createServerClientSupabase();
+  
+  // Check if user is authenticated
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
+    throw new Error('Not authenticated');
+  }
+  
+  // Check if user has admin role in public.users table
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  
+  if (userError || !userData) {
+    throw new Error('User profile not found');
+  }
+  
+  if (userData.role !== 'admin') {
+    throw new Error('Not authorized. Admin access required.');
+  }
+  
+  return user.id;
 }
 
 export async function createUserAction(
@@ -17,22 +82,14 @@ export async function createUserAction(
   emergencyContactPhone?: string,
   preferredLanguage: Language = 'en'
 ) {
-  // Use service role key to bypass RLS
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY (service role key) is not set. Add it to your environment (e.g., in .env.local) as SUPABASE_SERVICE_ROLE_KEY and restart the dev server.');
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
+  // Verify caller is admin
+  await assertCallerIsAdmin();
+  
+  // Normalize phone number to digits
+  const normalizedPhone = normalizePhoneToDigits(phone);
   const email = phoneToEmail(phone);
+  
+  const supabase = createAdminClient();
 
   try {
     // Create auth user
@@ -45,12 +102,12 @@ export async function createUserAction(
     if (authError) throw authError;
     if (!authData.user) throw new Error('Failed to create auth user');
 
-    // Insert into users table with service role (bypasses RLS)
+    // Insert into users table with normalized phone (bypasses RLS via service role)
     const { error: userError } = await supabase.from('users').insert({
       id: authData.user.id,
       role,
       preferred_language: preferredLanguage,
-      phone,
+      phone: normalizedPhone,
       full_name: fullName,
     });
 
@@ -72,12 +129,49 @@ export async function createUserAction(
         emergency_contact_phone: emergencyContactPhone || '',
       });
 
-      if (participantError) throw participantError;
+      if (participantError) {
+        // Rollback: delete both users record and auth user
+        try {
+          await supabase.from('users').delete().eq('id', authData.user.id);
+          await supabase.auth.admin.deleteUser(authData.user.id);
+        } catch (rollbackErr) {
+          console.error('Failed to rollback after participants insert failure:', rollbackErr);
+        }
+        throw participantError;
+      }
     }
 
     return { success: true, userId: authData.user.id };
   } catch (error: any) {
     console.error('Error creating user:', error);
     throw new Error(error.message || 'Failed to create user');
+  }
+}
+
+/**
+ * Delete a user (admin only)
+ * Prevents deleting own account
+ */
+export async function deleteUserAction(userId: string) {
+  // Verify caller is admin and get their ID
+  const callerId = await assertCallerIsAdmin();
+  
+  // Prevent deleting own account
+  if (callerId === userId) {
+    throw new Error('Cannot delete your own account');
+  }
+  
+  const supabase = createAdminClient();
+  
+  try {
+    // Delete auth user (this will cascade to users table via foreign key)
+    const { error } = await supabase.auth.admin.deleteUser(userId);
+    
+    if (error) throw error;
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error deleting user:', error);
+    throw new Error(error.message || 'Failed to delete user');
   }
 }

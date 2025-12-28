@@ -1,15 +1,5 @@
 import { supabase, UserProfile, UserRole } from './supabase';
-
-// NOTE: This email format is only for internal use with Supabase Auth.
-// This is a temporary workaround since Supabase Auth only supports phone auth through
-// third-party providers (e.g., Twilio), which are pay-per-use services.
-// By converting phone numbers to unique email addresses, we can use
-// Supabase's built-in email/password auth while still allowing users
-// to sign up/sign in using their phone numbers.
-function phoneToEmail(phone: string): string {
-  const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  return `p${cleanPhone}@gmail.com`;
-}
+import { phoneToEmail } from './phone';
 
 export async function signInWithPhone(phone: string, password: string) {
   const email = phoneToEmail(phone);
@@ -19,14 +9,6 @@ export async function signInWithPhone(phone: string, password: string) {
   });
 
   if (error) throw error;
-
-  // Ensure the session is set in the client
-  if (data.session) {
-    await supabase.auth.setSession({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
-    });
-  }
 
   return data;
 }
@@ -38,55 +20,6 @@ export async function signIn(email: string, password: string) {
   });
 
   if (error) throw error;
-  return data;
-}
-
-export async function signUpWithPhone(
-  phone: string,
-  password: string,
-  role: UserRole,
-  preferredLanguage: 'en' | 'id' = 'en'
-) {
-  const email = phoneToEmail(phone);
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-
-  if (data.user) {
-    const { error: profileError } = await supabase.from('users').insert({
-      id: data.user.id,
-      role,
-      preferred_language: preferredLanguage,
-      phone,
-    });
-
-    if (profileError) throw profileError;
-  }
-
-  return data;
-}
-
-export async function signUp(email: string, password: string, role: UserRole, preferredLanguage: 'en' | 'id' = 'en') {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-
-  if (data.user) {
-    const { error: profileError } = await supabase.from('users').insert({
-      id: data.user.id,
-      role,
-      preferred_language: preferredLanguage,
-    });
-
-    if (profileError) throw profileError;
-  }
-
   return data;
 }
 
