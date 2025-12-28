@@ -191,10 +191,10 @@ export default function SessionsPage() {
                       <TableCell>{session.time.slice(0, 5)}</TableCell>
                       <TableCell>{session.type}</TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/volunteer/sessions/${session.id}`}>
+                        <Link href={`/admin/sessions/${session.id}`}>
                           <Button size="sm" variant="outline">
                             <ExternalLink className="h-4 w-4 mr-2" />
-                            View Attendance
+                            Manage Attendance
                           </Button>
                         </Link>
                       </TableCell>
