@@ -186,7 +186,8 @@ export default function ParticipantLessonsPage() {
   }
 
   function formatDate(dateString: string): string {
-    return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', {
+    const locale = language === 'id' ? 'id-ID' : 'en-US';
+    return new Date(dateString + 'T00:00:00').toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',

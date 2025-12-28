@@ -116,7 +116,7 @@ export default function ParticipantDashboard() {
   }
 
   if (!participant) {
-    return <div className="text-center py-8">Profile not found</div>;
+    return <div className="text-center py-8">{t('profile_not_found')}</div>;
   }
 
   function handlePhotoUpdate(url: string) {
@@ -161,7 +161,7 @@ export default function ParticipantDashboard() {
               <div className="bg-gradient-to-br from-[#FF8E53] to-[#FF6B6B] p-3 rounded-xl shadow-lg">
                 <Trophy className="h-7 w-7 text-white" />
               </div>
-              <span className="bg-gradient-to-r from-[#FF8E53] to-[#FF6B6B] bg-clip-text text-transparent">Current Level</span>
+              <span className="bg-gradient-to-r from-[#FF8E53] to-[#FF6B6B] bg-clip-text text-transparent">{t('current_level')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -181,14 +181,14 @@ export default function ParticipantDashboard() {
                 <div className="flex items-center gap-2 mt-4">
                   <Badge className="text-sm py-1.5 px-4 bg-gradient-to-r from-[#FF8E53] to-[#FF6B6B] text-white border-0 shadow-md">
                     <Sparkles className="h-4 w-4 mr-1" />
-                    Achieved {new Date(currentLevel.achieved_date).toLocaleDateString()}
+                    {t('achieved_on')} {new Date(currentLevel.achieved_date).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US')}
                   </Badge>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8">
                 <Award className="h-16 w-16 text-[#FF8E53]/50 mx-auto mb-3 animate-bounce" />
-                <p className="text-[#443837] font-medium">Your first level awaits! Keep practicing!</p>
+                <p className="text-[#443837] font-medium">{t('first_level_awaits_keep_practicing')}</p>
               </div>
             )}
           </CardContent>
@@ -200,7 +200,7 @@ export default function ParticipantDashboard() {
               <div className="bg-gradient-to-br from-[#4FBACA] to-[#3AA8BC] p-3 rounded-xl shadow-lg">
                 <Calendar className="h-7 w-7 text-white" />
               </div>
-              <span className="bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] bg-clip-text text-transparent">Next Lesson</span>
+              <span className="bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] bg-clip-text text-transparent">{t('next_lesson')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -208,20 +208,20 @@ export default function ParticipantDashboard() {
               <div className="space-y-3">
                 <div className="relative">
                   <div className="text-3xl font-bold mb-2 text-[#443837]">
-                    {new Date(nextLesson.sessions.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    {new Date(nextLesson.sessions.date).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                   </div>
                 </div>
                 <div className="space-y-2 bg-white/60 rounded-xl p-4 backdrop-blur-sm">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-[#4FBACA] animate-pulse"></div>
                     <p className="text-base text-[#443837] font-semibold">
-                      Time: {nextLesson.sessions.time}
+                      {t('time')}: {nextLesson.sessions.time}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-[#3AA8BC] animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                     <p className="text-base text-[#443837] font-semibold">
-                      Type: {nextLesson.sessions.type.replace('_', ' ')}
+                      {t('type')}: {nextLesson.sessions.type.replace('_', ' ')}
                     </p>
                   </div>
                 </div>
@@ -235,8 +235,8 @@ export default function ParticipantDashboard() {
             ) : (
               <div className="text-center py-8">
                 <Calendar className="h-16 w-16 text-[#4FBACA]/50 mx-auto mb-3" />
-                <p className="text-[#443837] font-medium">No upcoming lessons scheduled</p>
-                <p className="text-[#443837]/70 text-sm mt-2">Check back soon for new opportunities!</p>
+                <p className="text-[#443837] font-medium">{t('no_upcoming_lessons_participant')}</p>
+                <p className="text-[#443837]/70 text-sm mt-2">{t('check_back_soon_opportunities')}</p>
               </div>
             )}
           </CardContent>
@@ -250,15 +250,15 @@ export default function ParticipantDashboard() {
             <div className="bg-gradient-to-br from-[#4FBACA] to-[#3AA8BC] p-3 rounded-xl shadow-lg">
               <Target className="h-7 w-7 text-white" />
             </div>
-            <span className="bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] bg-clip-text text-transparent">Recent Skills Achieved</span>
+            <span className="bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] bg-clip-text text-transparent">{t('recent_skills_achieved')}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="relative">
           {recentSkills.length === 0 ? (
             <div className="text-center py-12">
               <Target className="h-20 w-20 text-[#4FBACA]/50 mx-auto mb-4 animate-pulse" />
-              <p className="text-[#443837] font-medium text-lg">Your skills journey begins here!</p>
-              <p className="text-[#443837]/70 text-sm mt-2">Every practice brings you closer to new achievements</p>
+              <p className="text-[#443837] font-medium text-lg">{t('skills_journey_begins')}</p>
+              <p className="text-[#443837]/70 text-sm mt-2">{t('every_practice_brings_achievements')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -285,7 +285,7 @@ export default function ParticipantDashboard() {
                       </div>
                     </div>
                     <Badge className="text-xs py-1 px-3 bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] text-white border-0 shadow-sm">
-                      {new Date(skill.achieved_date).toLocaleDateString()}
+                      {new Date(skill.achieved_date).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US')}
                     </Badge>
                   </div>
                   <p className="text-base text-[#443837]/80 leading-relaxed font-medium pl-11">
