@@ -84,6 +84,9 @@ export default function UsersManagementPage() {
 
     try {
       // Use server action to create user (uses service role, bypasses RLS)
+      // Default participants to Indonesian, others to English
+      const userLanguage = formData.role === 'participant' ? 'id' : 'en';
+      
       const result = await createUserAction(
         formData.phone,
         formData.password,
@@ -91,7 +94,7 @@ export default function UsersManagementPage() {
         formData.full_name,
         formData.emergency_contact_name,
         formData.emergency_contact_phone,
-        language
+        userLanguage
       );
 
       if (result.success) {
