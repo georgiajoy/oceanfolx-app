@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getCurrentUser, getUserProfile } from '@/lib/auth';
-import { createUserAction, deleteUserAction, whoAmIAction } from './actions';
+import { createUserAction, deleteUserAction } from './actions';
 import { supabase, Language, UserProfile, UserRole } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -25,7 +25,6 @@ export default function UsersManagementPage() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [debugAuth, setDebugAuth] = useState<any>(null);
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
@@ -159,17 +158,7 @@ export default function UsersManagementPage() {
             <h2 className="text-3xl font-bold text-[#443837]">User Management</h2>
             <p className="text-sm text-[#443837]/70 mt-1">Manage all users in the system</p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={async () => {
-                const result = await whoAmIAction();
-                setDebugAuth(result);
-              }}
-            >
-              Debug Auth
-            </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -265,7 +254,6 @@ export default function UsersManagementPage() {
             </form>
           </DialogContent>
         </Dialog>
-          </div>
         </div>
         {error && (
           <Alert variant="destructive" className="mt-4">
@@ -275,17 +263,6 @@ export default function UsersManagementPage() {
         {successMessage && (
           <Alert className="mt-4">
             <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        )}
-        {debugAuth && (
-          <Alert className="mt-4" variant={debugAuth.hasUser ? "default" : "destructive"}>
-            <AlertDescription>
-              <strong>Debug Auth Result:</strong><br />
-              Has User: {debugAuth.hasUser ? 'Yes' : 'No'}<br />
-              {debugAuth.userId && <>User ID: {debugAuth.userId}<br /></>}
-              {debugAuth.email && <>Email: {debugAuth.email}<br /></>}
-              {debugAuth.error && <>Error: {debugAuth.error}</>}
-            </AlertDescription>
           </Alert>
         )}
       </div>

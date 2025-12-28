@@ -1,45 +1,9 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { UserRole, Language } from '@/lib/supabase';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { normalizePhoneToDigits, phoneToEmail } from '@/lib/phone';
-
-/**
- * DEBUG: Temporary action to verify server-side auth is working
- */
-export async function whoAmIAction() {
-  try {
-    const supabase = createServerClientSupabase();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError) {
-      return { 
-        hasUser: false, 
-        error: authError.message 
-      };
-    }
-    
-    if (!user) {
-      return { 
-        hasUser: false, 
-        error: 'No user session found' 
-      };
-    }
-    
-    return {
-      hasUser: true,
-      userId: user.id,
-      email: user.email,
-    };
-  } catch (err) {
-    return {
-      hasUser: false,
-      error: err instanceof Error ? err.message : 'Unknown error',
-    };
-  }
-}
 
 /**
  * Authorization guard: ensures the caller is an authenticated admin
