@@ -104,7 +104,7 @@ export default function AdminParticipantsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-[#443837]">{t('participants')}</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">{t('participants')}</h2>
       </div>
 
       <Card>
@@ -123,7 +123,8 @@ export default function AdminParticipantsPage() {
           {loading ? (
             <div className="text-center py-8">{t('loading')}</div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('full_name')}</TableHead>
@@ -164,6 +165,7 @@ export default function AdminParticipantsPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

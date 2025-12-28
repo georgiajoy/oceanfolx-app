@@ -141,9 +141,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden sm:block">
-                <LanguageSwitcher currentLanguage={language} onLanguageChange={handleLanguageChange} />
-              </div>
+              <LanguageSwitcher currentLanguage={language} onLanguageChange={handleLanguageChange} />
               <Button
                 size="sm"
                 onClick={handleLogout}

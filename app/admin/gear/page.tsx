@@ -141,17 +141,18 @@ export default function AdminGearManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-[#443837]">Gear Management</h2>
-          <p className="mt-2 text-sm text-[#443837]/70">Manage gear inventory and types</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">Gear Management</h2>
+          <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#443837]/70">Manage gear inventory and types</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Dialog open={showTypeDialog} onOpenChange={setShowTypeDialog}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Gear Type
+              <Button className="flex-1 sm:flex-initial">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Gear Type</span>
+                <span className="sm:hidden">Add Type</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -195,9 +196,10 @@ export default function AdminGearManagement() {
 
           <Dialog open={showInventoryDialog} onOpenChange={setShowInventoryDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <Package className="h-4 w-4 mr-2" />
-                Add Inventory
+              <Button variant="outline" className="flex-1 sm:flex-initial">
+                <Package className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Inventory</span>
+                <span className="sm:hidden">Inventory</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -263,7 +265,8 @@ export default function AdminGearManagement() {
           <CardTitle>Current Inventory</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Gear Type</TableHead>
@@ -313,6 +316,7 @@ export default function AdminGearManagement() {
               })}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

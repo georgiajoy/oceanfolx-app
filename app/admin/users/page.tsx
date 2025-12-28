@@ -153,16 +153,17 @@ export default function UsersManagementPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-[#443837]">User Management</h2>
-            <p className="text-sm text-[#443837]/70 mt-1">Manage all users in the system</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">User Management</h2>
+            <p className="text-xs sm:text-sm text-[#443837]/70 mt-1">Manage all users in the system</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add User
+                <Button className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add User</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
@@ -285,17 +286,18 @@ export default function UsersManagementPage() {
           {loading ? (
             <div className="text-center py-8">{t('loading')}</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Full Name</TableHead>
-                  <TableHead>Phone Number</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Language</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Full Name</TableHead>
+                    <TableHead>Phone Number</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Language</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
@@ -357,6 +359,7 @@ export default function UsersManagementPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

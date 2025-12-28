@@ -169,16 +169,17 @@ export default function GearAssignmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-[#443837]">Gear Assignments</h2>
-          <p className="mt-2 text-sm text-[#443837]/70">Assign gear to participants</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">Gear Assignments</h2>
+          <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#443837]/70">Assign gear to participants</p>
         </div>
         <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Assign Gear
+            <Button className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Assign Gear</span>
+              <span className="sm:hidden">Assign</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -253,7 +254,8 @@ export default function GearAssignmentsPage() {
           <CardTitle>All Gear Assignments</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Participant</TableHead>
@@ -297,6 +299,7 @@ export default function GearAssignmentsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

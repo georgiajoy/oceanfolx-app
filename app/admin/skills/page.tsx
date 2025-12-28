@@ -137,7 +137,7 @@ export default function SkillsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-[#443837]">{t('manage_skills')}</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">{t('manage_skills')}</h2>
       </div>
 
       <Tabs defaultValue="levels" className="w-full">
@@ -226,16 +226,17 @@ export default function SkillsPage() {
               {loading ? (
                 <div className="text-center py-8">{t('loading')}</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order</TableHead>
-                      <TableHead>English Name</TableHead>
-                      <TableHead>Indonesian Name</TableHead>
-                      <TableHead>English Description</TableHead>
-                      <TableHead>Indonesian Description</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order</TableHead>
+                        <TableHead>English Name</TableHead>
+                        <TableHead>Indonesian Name</TableHead>
+                        <TableHead>English Description</TableHead>
+                        <TableHead>Indonesian Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {levels.length === 0 ? (
                       <TableRow>
@@ -256,6 +257,7 @@ export default function SkillsPage() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -358,17 +360,18 @@ export default function SkillsPage() {
               {loading ? (
                 <div className="text-center py-8">{t('loading')}</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Level</TableHead>
-                      <TableHead>Order</TableHead>
-                      <TableHead>English Name</TableHead>
-                      <TableHead>Indonesian Name</TableHead>
-                      <TableHead>English Description</TableHead>
-                      <TableHead>Indonesian Description</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Level</TableHead>
+                        <TableHead>Order</TableHead>
+                        <TableHead>English Name</TableHead>
+                        <TableHead>Indonesian Name</TableHead>
+                        <TableHead>English Description</TableHead>
+                        <TableHead>Indonesian Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {skills.length === 0 ? (
                       <TableRow>
@@ -392,6 +395,7 @@ export default function SkillsPage() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>

@@ -249,8 +249,8 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-[#443837]">{participant.full_name}</h2>
-        <p className="mt-2 text-sm text-[#443837]/70">Manage participant progress</p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">{participant.full_name}</h2>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#443837]/70">Manage participant progress</p>
       </div>
 
       {message && (
@@ -261,18 +261,19 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
               Participant Information
             </CardTitle>
             {!editingInfo ? (
-              <Button size="sm" variant="outline" onClick={() => setEditingInfo(true)}>
-                <Edit className="h-4 w-4 mr-1" />
-                Edit Info
+              <Button size="sm" variant="outline" onClick={() => setEditingInfo(true)} className="w-full sm:w-auto">
+                <Edit className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Edit Info</span>
+                <span className="sm:hidden ml-1">Edit</span>
               </Button>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button size="sm" variant="outline" onClick={() => {
                   setEditingInfo(false);
                   setParticipantForm({

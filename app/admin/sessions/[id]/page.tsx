@@ -182,8 +182,8 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-[#443837]">Lesson Attendance</h2>
-        <p className="mt-2 text-sm text-[#443837]/70">
+        <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">Lesson Attendance</h2>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#443837]/70">
           {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
@@ -202,7 +202,7 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Select value={selectedParticipantId} onValueChange={setSelectedParticipantId}>
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Select a participant..." />
@@ -218,10 +218,11 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
             <Button
               onClick={addParticipantToSession}
               disabled={!selectedParticipantId || addingParticipant}
-              className="bg-[#4FBACA] hover:bg-[#4FBACA]/90"
+              className="bg-[#4FBACA] hover:bg-[#4FBACA]/90 w-full sm:w-auto"
             >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add to Session
+              <UserPlus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add to Session</span>
+              <span className="sm:hidden ml-1">Add</span>
             </Button>
           </div>
           {availableParticipants.length === 0 && (

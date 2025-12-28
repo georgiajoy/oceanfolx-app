@@ -93,16 +93,17 @@ export default function SessionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-[#443837]">Manage Lessons</h2>
-          <p className="text-sm text-[#443837]/70 mt-1">Create and manage swim lessons</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">Manage Lessons</h2>
+          <p className="text-xs sm:text-sm text-[#443837]/70 mt-1">Create and manage swim lessons</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Lesson
+            <Button className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Create Lesson</span>
+              <span className="sm:hidden">Add Lesson</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
@@ -161,7 +162,8 @@ export default function SessionsPage() {
           {loading ? (
             <div className="text-center py-8">{t('loading')}</div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('date')}</TableHead>
@@ -203,6 +205,7 @@ export default function SessionsPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
