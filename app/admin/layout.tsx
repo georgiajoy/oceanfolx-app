@@ -145,7 +145,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <Button
                 size="sm"
                 onClick={handleLogout}
-                className="bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all"
+                className="relative z-10 bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all pointer-events-auto"
               >
                 <LogOut className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">{t('logout')}</span>
