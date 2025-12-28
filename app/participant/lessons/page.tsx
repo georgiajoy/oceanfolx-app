@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
@@ -45,7 +45,11 @@ export default function ParticipantLessonsPage() {
   const { language } = useLanguage();
   const t = useTranslation(language);
 
-  const loadData = useCallback(async () => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
     try {
       setLoading(true);
       const user = await getCurrentUser();
@@ -74,10 +78,13 @@ export default function ParticipantLessonsPage() {
 
       const { data: spData, error: spError } = await supabase
         .from('session_participants')
-        .select('*, sessions(*)')
+        .select('*, session:sessions(*)')
         .eq('participant_id', participantData.id);
 
-      if (spError) throw spError;
+      if (spError) {
+        console.error('Session participants query error:', spError);
+        throw spError;
+      }
 
       const all = spData || [];
       setSignups(all.filter((s: any) => s.status === 'signed_up'));
@@ -88,11 +95,7 @@ export default function ParticipantLessonsPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  }
 
   async function handleSignUp(sessionId: string) {
     if (!participantId) return;
