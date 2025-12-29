@@ -27,6 +27,9 @@ export default function SessionsPage() {
     date: '',
     time: '',
     type: 'Swim Lesson',
+    isRecurring: false,
+    frequency: 'weekly' as 'daily' | 'weekly',
+    endDate: '',
   });
   const t = useTranslation(language);
 
@@ -72,20 +75,54 @@ export default function SessionsPage() {
     setError('');
 
     try {
-      const { error: insertError } = await supabase
-        .from('sessions')
-        .insert({
-          date: formData.date,
-          time: formData.time,
-          type: formData.type,
-        });
+      if (formData.isRecurring && formData.endDate) {
+        // Generate recurring sessions
+        const sessions = [];
+        const startDate = new Date(formData.date + 'T00:00:00');
+        const endDate = new Date(formData.endDate + 'T00:00:00');
+        
+        let currentDate = new Date(startDate);
+        
+        while (currentDate <= endDate) {
+          sessions.push({
+            date: currentDate.toISOString().split('T')[0],
+            time: formData.time,
+            type: formData.type,
+          });
+          
+          // Increment based on frequency
+          if (formData.frequency === 'daily') {
+            currentDate.setDate(currentDate.getDate() + 1);
+          } else if (formData.frequency === 'weekly') {
+            currentDate.setDate(currentDate.getDate() + 7);
+          }
+        }
+        
+        const { error: insertError } = await supabase
+          .from('sessions')
+          .insert(sessions);
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      } else {
+        // Single session
+        const { error: insertError } = await supabase
+          .from('sessions')
+          .insert({
+            date: formData.date,
+            time: formData.time,
+            type: formData.type,
+          });
+
+        if (insertError) throw insertError;
+      }
 
       setFormData({
         date: '',
         time: '',
         type: 'Swim Lesson',
+        isRecurring: false,
+        frequency: 'weekly',
+        endDate: '',
       });
       setIsDialogOpen(false);
       loadSessions();
@@ -190,6 +227,45 @@ export default function SessionsPage() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isRecurring"
+                    checked={formData.isRecurring}
+                    onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="isRecurring" className="cursor-pointer">Make this a recurring lesson</Label>
+                </div>
+              </div>
+              {formData.isRecurring && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="frequency">Frequency</Label>
+                    <select
+                      id="frequency"
+                      value={formData.frequency}
+                      onChange={(e) => setFormData({ ...formData, frequency: e.target.value as 'daily' | 'weekly' })}
+                      className="w-full px-3 py-2 border rounded-md"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">End Date</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      min={formData.date}
+                      required={formData.isRecurring}
+                    />
+                  </div>
+                </>
+              )}
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
