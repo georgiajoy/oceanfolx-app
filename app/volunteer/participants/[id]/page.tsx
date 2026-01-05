@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Award, User, Plus, X, Calendar, Edit, Save } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,28 @@ export default function VolunteerParticipantDetailPage() {
     emergency_contact_phone: '',
     shoe_size: '',
     clothing_size: '',
+    age: '',
+    village: '',
+    number_of_children: '',
+    respiratory_issues: '',
+    diabetes: '',
+    neurological_conditions: '',
+    chronic_illnesses: '',
+    head_injuries: '',
+    hospitalizations: '',
+    medications: '',
+    medications_not_taking_during_program: '',
+    medical_dietary_requirements: '',
+    religious_personal_dietary_restrictions: '',
+    swim_ability_calm: 'none' as 'none' | 'poor' | 'competent' | 'advanced',
+    swim_ability_moving: 'none' as 'none' | 'poor' | 'competent' | 'advanced',
+    surfing_experience: 'none' as 'none' | 'poor' | 'competent' | 'advanced',
+    commitment_statement: false,
+    risks_release_indemnity_agreement: false,
+    media_release_agreement: false,
+    hijab_photo_preference: 'with_or_without' as 'with_or_without' | 'only_with',
+    signature: '',
+    signature_date: '',
   });
   const t = useTranslation(language);
 
@@ -86,13 +109,35 @@ export default function VolunteerParticipantDetailPage() {
       setParticipantSkills(participantSkillsResult.data as ParticipantSkillWithDetails[] || []);
       setParticipantLevels(participantLevelsResult.data as ParticipantLevelWithDetails[] || []);
 
-      if (participantResult.data) {
+      if (mappedParticipant) {
         setParticipantForm({
-          full_name: participantResult.data.full_name || '',
-          emergency_contact_name: participantResult.data.emergency_contact_name || '',
-          emergency_contact_phone: participantResult.data.emergency_contact_phone || '',
-          shoe_size: participantResult.data.shoe_size || '',
-          clothing_size: participantResult.data.clothing_size || '',
+          full_name: mappedParticipant.full_name || '',
+          emergency_contact_name: mappedParticipant.emergency_contact_name || '',
+          emergency_contact_phone: mappedParticipant.emergency_contact_phone || '',
+          shoe_size: mappedParticipant.shoe_size || '',
+          clothing_size: mappedParticipant.clothing_size || '',
+          age: mappedParticipant.age || '',
+          village: mappedParticipant.village || '',
+          number_of_children: mappedParticipant.number_of_children || '',
+          respiratory_issues: mappedParticipant.respiratory_issues || '',
+          diabetes: mappedParticipant.diabetes || '',
+          neurological_conditions: mappedParticipant.neurological_conditions || '',
+          chronic_illnesses: mappedParticipant.chronic_illnesses || '',
+          head_injuries: mappedParticipant.head_injuries || '',
+          hospitalizations: mappedParticipant.hospitalizations || '',
+          medications: mappedParticipant.medications || '',
+          medications_not_taking_during_program: mappedParticipant.medications_not_taking_during_program || '',
+          medical_dietary_requirements: mappedParticipant.medical_dietary_requirements || '',
+          religious_personal_dietary_restrictions: mappedParticipant.religious_personal_dietary_restrictions || '',
+          swim_ability_calm: mappedParticipant.swim_ability_calm || 'none',
+          swim_ability_moving: mappedParticipant.swim_ability_moving || 'none',
+          surfing_experience: mappedParticipant.surfing_experience || 'none',
+          commitment_statement: mappedParticipant.commitment_statement || false,
+          risks_release_indemnity_agreement: mappedParticipant.risks_release_indemnity_agreement || false,
+          media_release_agreement: mappedParticipant.media_release_agreement || false,
+          hijab_photo_preference: mappedParticipant.hijab_photo_preference || 'with_or_without',
+          signature: mappedParticipant.signature || '',
+          signature_date: mappedParticipant.signature_date || '',
         });
       }
     } catch (error) {
@@ -213,6 +258,28 @@ export default function VolunteerParticipantDetailPage() {
           emergency_contact_phone: participantForm.emergency_contact_phone,
           shoe_size: participantForm.shoe_size,
           clothing_size: participantForm.clothing_size,
+          age: participantForm.age,
+          village: participantForm.village,
+          number_of_children: participantForm.number_of_children,
+          respiratory_issues: participantForm.respiratory_issues,
+          diabetes: participantForm.diabetes,
+          neurological_conditions: participantForm.neurological_conditions,
+          chronic_illnesses: participantForm.chronic_illnesses,
+          head_injuries: participantForm.head_injuries,
+          hospitalizations: participantForm.hospitalizations,
+          medications: participantForm.medications,
+          medications_not_taking_during_program: participantForm.medications_not_taking_during_program,
+          medical_dietary_requirements: participantForm.medical_dietary_requirements,
+          religious_personal_dietary_restrictions: participantForm.religious_personal_dietary_restrictions,
+          swim_ability_calm: participantForm.swim_ability_calm,
+          swim_ability_moving: participantForm.swim_ability_moving,
+          surfing_experience: participantForm.surfing_experience,
+          commitment_statement: participantForm.commitment_statement,
+          risks_release_indemnity_agreement: participantForm.risks_release_indemnity_agreement,
+          media_release_agreement: participantForm.media_release_agreement,
+          hijab_photo_preference: participantForm.hijab_photo_preference,
+          signature: participantForm.signature,
+          signature_date: participantForm.signature_date,
         })
         .eq('id', participantId);
 
@@ -281,6 +348,28 @@ export default function VolunteerParticipantDetailPage() {
                     emergency_contact_phone: participant.emergency_contact_phone || '',
                     shoe_size: participant.shoe_size || '',
                     clothing_size: participant.clothing_size || '',
+                    age: participant.age || '',
+                    village: participant.village || '',
+                    number_of_children: participant.number_of_children || '',
+                    respiratory_issues: participant.respiratory_issues || '',
+                    diabetes: participant.diabetes || '',
+                    neurological_conditions: participant.neurological_conditions || '',
+                    chronic_illnesses: participant.chronic_illnesses || '',
+                    head_injuries: participant.head_injuries || '',
+                    hospitalizations: participant.hospitalizations || '',
+                    medications: participant.medications || '',
+                    medications_not_taking_during_program: participant.medications_not_taking_during_program || '',
+                    medical_dietary_requirements: participant.medical_dietary_requirements || '',
+                    religious_personal_dietary_restrictions: participant.religious_personal_dietary_restrictions || '',
+                    swim_ability_calm: participant.swim_ability_calm || 'none',
+                    swim_ability_moving: participant.swim_ability_moving || 'none',
+                    surfing_experience: participant.surfing_experience || 'none',
+                    commitment_statement: participant.commitment_statement || false,
+                    risks_release_indemnity_agreement: participant.risks_release_indemnity_agreement || false,
+                    media_release_agreement: participant.media_release_agreement || false,
+                    hijab_photo_preference: participant.hijab_photo_preference || 'with_or_without',
+                    signature: participant.signature || '',
+                    signature_date: participant.signature_date || '',
                   });
                 }}>
                   <X className="h-4 w-4 mr-1" />
@@ -368,6 +457,358 @@ export default function VolunteerParticipantDetailPage() {
                 />
               ) : (
                 <div className="font-medium mt-1">{participant.clothing_size || 'Not specified'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Age</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.age}
+                  onChange={(e) => setParticipantForm({ ...participantForm, age: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.age || 'Not specified'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Village</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.village}
+                  onChange={(e) => setParticipantForm({ ...participantForm, village: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.village || 'Not specified'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Number of Children</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.number_of_children}
+                  onChange={(e) => setParticipantForm({ ...participantForm, number_of_children: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.number_of_children || 'Not specified'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Swim Ability (Calm Water)</Label>
+              {editingInfo ? (
+                <select
+                  value={participantForm.swim_ability_calm}
+                  onChange={(e) => setParticipantForm({ ...participantForm, swim_ability_calm: e.target.value as 'none' | 'poor' | 'competent' | 'advanced' })}
+                  className="w-full px-3 py-2 border rounded-md mt-1"
+                >
+                  <option value="none">None</option>
+                  <option value="poor">Poor</option>
+                  <option value="competent">Competent</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              ) : (
+                <div className="font-medium mt-1 capitalize">{participant.swim_ability_calm || 'Not specified'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Swim Ability (Moving Water)</Label>
+              {editingInfo ? (
+                <select
+                  value={participantForm.swim_ability_moving}
+                  onChange={(e) => setParticipantForm({ ...participantForm, swim_ability_moving: e.target.value as 'none' | 'poor' | 'competent' | 'advanced' })}
+                  className="w-full px-3 py-2 border rounded-md mt-1"
+                >
+                  <option value="none">None</option>
+                  <option value="poor">Poor</option>
+                  <option value="competent">Competent</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              ) : (
+                <div className="font-medium mt-1 capitalize">{participant.swim_ability_moving || 'Not specified'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Surfing Experience</Label>
+              {editingInfo ? (
+                <select
+                  value={participantForm.surfing_experience}
+                  onChange={(e) => setParticipantForm({ ...participantForm, surfing_experience: e.target.value as 'none' | 'poor' | 'competent' | 'advanced' })}
+                  className="w-full px-3 py-2 border rounded-md mt-1"
+                >
+                  <option value="none">None</option>
+                  <option value="poor">Poor</option>
+                  <option value="competent">Competent</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              ) : (
+                <div className="font-medium mt-1 capitalize">{participant.surfing_experience || 'Not specified'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Respiratory Issues</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.respiratory_issues}
+                  onChange={(e) => setParticipantForm({ ...participantForm, respiratory_issues: e.target.value })}
+                  placeholder="e.g., Asthma"
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.respiratory_issues || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Diabetes</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.diabetes}
+                  onChange={(e) => setParticipantForm({ ...participantForm, diabetes: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.diabetes || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Neurological Conditions</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.neurological_conditions}
+                  onChange={(e) => setParticipantForm({ ...participantForm, neurological_conditions: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.neurological_conditions || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Chronic Illnesses</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.chronic_illnesses}
+                  onChange={(e) => setParticipantForm({ ...participantForm, chronic_illnesses: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.chronic_illnesses || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Head Injuries</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.head_injuries}
+                  onChange={(e) => setParticipantForm({ ...participantForm, head_injuries: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.head_injuries || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Hospitalizations</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.hospitalizations}
+                  onChange={(e) => setParticipantForm({ ...participantForm, hospitalizations: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.hospitalizations || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Medications</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.medications}
+                  onChange={(e) => setParticipantForm({ ...participantForm, medications: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.medications || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Medications NOT Taking During Program</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.medications_not_taking_during_program}
+                  onChange={(e) => setParticipantForm({ ...participantForm, medications_not_taking_during_program: e.target.value })}
+                  className="mt-1"
+                  placeholder="Medications participant will not take during program"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.medications_not_taking_during_program || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Medical Dietary Requirements</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.medical_dietary_requirements}
+                  onChange={(e) => setParticipantForm({ ...participantForm, medical_dietary_requirements: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.medical_dietary_requirements || 'None'}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Religious/Personal Dietary Restrictions</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.religious_personal_dietary_restrictions}
+                  onChange={(e) => setParticipantForm({ ...participantForm, religious_personal_dietary_restrictions: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.religious_personal_dietary_restrictions || 'None'}</div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Acknowledgments & Agreements Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Acknowledgments & Agreements
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6">
+            <div>
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="commitment_statement"
+                  checked={editingInfo ? participantForm.commitment_statement : (participant.commitment_statement || false)}
+                  disabled={!editingInfo}
+                  onCheckedChange={(checked) => setParticipantForm({ ...participantForm, commitment_statement: checked as boolean })}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="commitment_statement"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Commitment Statement{' '}
+                    <a
+                      href="https://docs.google.com/document/d/1NKLWucJcTBEAIJYQppp5wpR5emlRn4mhh8WwA_eqc7Y/edit?usp=sharing"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      (View Document)
+                    </a>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="risks_release_indemnity_agreement"
+                  checked={editingInfo ? participantForm.risks_release_indemnity_agreement : (participant.risks_release_indemnity_agreement || false)}
+                  disabled={!editingInfo}
+                  onCheckedChange={(checked) => setParticipantForm({ ...participantForm, risks_release_indemnity_agreement: checked as boolean })}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="risks_release_indemnity_agreement"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Risks & Release and Indemnity Agreement{' '}
+                    <a
+                      href="https://docs.google.com/document/d/14bXajnXp_FwSqob-v81_sdGbylUYh6r9/edit?usp=sharing&ouid=104263968158926244329&rtpof=true&sd=true"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      (View Document)
+                    </a>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="media_release_agreement"
+                  checked={editingInfo ? participantForm.media_release_agreement : (participant.media_release_agreement || false)}
+                  disabled={!editingInfo}
+                  onCheckedChange={(checked) => setParticipantForm({ ...participantForm, media_release_agreement: checked as boolean })}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="media_release_agreement"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Photo/Video Media and Social Media Release Agreement{' '}
+                    <a
+                      href="https://docs.google.com/document/d/1CYVPSTeIYhCoT8zeSzlDl_LXdBPcA_Qb/edit?usp=sharing&ouid=104263968158926244329&rtpof=true&sd=true"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      (View Document)
+                    </a>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm text-gray-600">Hijab Photo Preference</Label>
+              {editingInfo ? (
+                <select
+                  id="hijab_photo_preference"
+                  value={participantForm.hijab_photo_preference}
+                  onChange={(e) => setParticipantForm({ ...participantForm, hijab_photo_preference: e.target.value as 'with_or_without' | 'only_with' })}
+                  className="w-full px-3 py-2 border rounded-md mt-1"
+                >
+                  <option value="with_or_without">I am comfortable being photographed with or without my hijab</option>
+                  <option value="only_with">I am only comfortable being photographed with my hijab</option>
+                </select>
+              ) : (
+                <div className="font-medium mt-1">
+                  {participant.hijab_photo_preference === 'only_with' 
+                    ? 'I am only comfortable being photographed with my hijab'
+                    : 'I am comfortable being photographed with or without my hijab'}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-sm text-gray-600">Signature (Full Name)</Label>
+              {editingInfo ? (
+                <Input
+                  value={participantForm.signature}
+                  onChange={(e) => setParticipantForm({ ...participantForm, signature: e.target.value })}
+                  className="mt-1"
+                  placeholder="Enter participant's full name"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.signature || 'Not signed'}</div>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-sm text-gray-600">Date of Signature</Label>
+              {editingInfo ? (
+                <Input
+                  type="date"
+                  value={participantForm.signature_date}
+                  onChange={(e) => setParticipantForm({ ...participantForm, signature_date: e.target.value })}
+                  className="mt-1"
+                />
+              ) : (
+                <div className="font-medium mt-1">{participant.signature_date || 'Not signed'}</div>
               )}
             </div>
           </div>
