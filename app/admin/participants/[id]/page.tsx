@@ -61,9 +61,9 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
     swim_ability_moving: 'none' as 'none' | 'poor' | 'competent' | 'advanced',
     surfing_experience: 'none' as 'none' | 'poor' | 'competent' | 'advanced',
     commitment_statement: false,
-    acknowledgment_agreement_authorization: false,
     risks_release_indemnity_agreement: false,
     media_release_agreement: false,
+    hijab_photo_preference: 'with_or_without' as 'with_or_without' | 'only_with',
     signature: '',
     signature_date: '',
   });
@@ -128,9 +128,9 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
           swim_ability_moving: mappedParticipant.swim_ability_moving || 'none',
           surfing_experience: mappedParticipant.surfing_experience || 'none',
           commitment_statement: mappedParticipant.commitment_statement || false,
-          acknowledgment_agreement_authorization: mappedParticipant.acknowledgment_agreement_authorization || false,
           risks_release_indemnity_agreement: mappedParticipant.risks_release_indemnity_agreement || false,
           media_release_agreement: mappedParticipant.media_release_agreement || false,
+          hijab_photo_preference: mappedParticipant.hijab_photo_preference || 'with_or_without',
           signature: mappedParticipant.signature || '',
           signature_date: mappedParticipant.signature_date || '',
         });
@@ -275,9 +275,9 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
           swim_ability_moving: participantForm.swim_ability_moving,
           surfing_experience: participantForm.surfing_experience,
           commitment_statement: participantForm.commitment_statement,
-          acknowledgment_agreement_authorization: participantForm.acknowledgment_agreement_authorization,
           risks_release_indemnity_agreement: participantForm.risks_release_indemnity_agreement,
           media_release_agreement: participantForm.media_release_agreement,
+          hijab_photo_preference: participantForm.hijab_photo_preference,
           signature: participantForm.signature,
           signature_date: participantForm.signature_date,
         })
@@ -366,9 +366,9 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
                     swim_ability_moving: participant.swim_ability_moving || 'none',
                     surfing_experience: participant.surfing_experience || 'none',
                     commitment_statement: participant.commitment_statement || false,
-                    acknowledgment_agreement_authorization: participant.acknowledgment_agreement_authorization || false,
                     risks_release_indemnity_agreement: participant.risks_release_indemnity_agreement || false,
                     media_release_agreement: participant.media_release_agreement || false,
+                    hijab_photo_preference: participant.hijab_photo_preference || 'with_or_without',
                     signature: participant.signature || '',
                     signature_date: participant.signature_date || '',
                   });
@@ -698,34 +698,7 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
                   >
                     Commitment Statement{' '}
                     <a
-                      href="https://docs.google.com/document/d/1OuwY0_xjEvqFRZ7DfaeVvlep99nNSg6J/edit"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      (View Document)
-                    </a>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="acknowledgment_agreement_authorization"
-                  checked={editingInfo ? participantForm.acknowledgment_agreement_authorization : (participant.acknowledgment_agreement_authorization || false)}
-                  disabled={!editingInfo}
-                  onCheckedChange={(checked) => setParticipantForm({ ...participantForm, acknowledgment_agreement_authorization: checked as boolean })}
-                />
-                <div className="grid gap-1.5 leading-none">
-                  <label
-                    htmlFor="acknowledgment_agreement_authorization"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Acknowledgment, Agreement, and Authorization{' '}
-                    <a
-                      href="https://docs.google.com/document/d/1OuwY0_xjEvqFRZ7DfaeVvlep99nNSg6J/edit"
+                      href="https://docs.google.com/document/d/1NKLWucJcTBEAIJYQppp5wpR5emlRn4mhh8WwA_eqc7Y/edit?usp=sharing"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline"
@@ -750,9 +723,9 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
                     htmlFor="risks_release_indemnity_agreement"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Acknowledgment and Assumption of Risks & Release and Indemnity Agreement{' '}
+                    Risks & Release and Indemnity Agreement{' '}
                     <a
-                      href="https://docs.google.com/document/d/14bXajnXp_FwSqob-v81_sdGbylUYh6r9/edit"
+                      href="https://docs.google.com/document/d/14bXajnXp_FwSqob-v81_sdGbylUYh6r9/edit?usp=sharing&ouid=104263968158926244329&rtpof=true&sd=true"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline"
@@ -779,7 +752,7 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
                   >
                     Photo/Video Media and Social Media Release Agreement{' '}
                     <a
-                      href="https://docs.google.com/document/d/1CYVPSTeIYhCoT8zeSzlDl_LXdBPcA_Qb/edit"
+                      href="https://docs.google.com/document/d/1CYVPSTeIYhCoT8zeSzlDl_LXdBPcA_Qb/edit?usp=sharing&ouid=104263968158926244329&rtpof=true&sd=true"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline"
@@ -789,6 +762,27 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
                   </label>
                 </div>
               </div>
+            </div>
+
+            <div>
+              <Label className="text-sm text-gray-600">Hijab Photo Preference</Label>
+              {editingInfo ? (
+                <select
+                  id="hijab_photo_preference"
+                  value={participantForm.hijab_photo_preference}
+                  onChange={(e) => setParticipantForm({ ...participantForm, hijab_photo_preference: e.target.value as 'with_or_without' | 'only_with' })}
+                  className="w-full px-3 py-2 border rounded-md mt-1"
+                >
+                  <option value="with_or_without">I am comfortable being photographed with or without my hijab</option>
+                  <option value="only_with">I am only comfortable being photographed with my hijab</option>
+                </select>
+              ) : (
+                <div className="font-medium mt-1">
+                  {participant.hijab_photo_preference === 'only_with' 
+                    ? 'I am only comfortable being photographed with my hijab'
+                    : 'I am comfortable being photographed with or without my hijab'}
+                </div>
+              )}
             </div>
 
             <div>

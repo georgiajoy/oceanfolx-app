@@ -47,9 +47,9 @@ export interface Participant {
   surfing_experience: 'none' | 'poor' | 'competent' | 'advanced' | null;
   // Acknowledgment and agreement fields
   commitment_statement: boolean | null;
-  acknowledgment_agreement_authorization: boolean | null;
   risks_release_indemnity_agreement: boolean | null;
   media_release_agreement: boolean | null;
+  hijab_photo_preference: 'with_or_without' | 'only_with' | null;
   signature: string | null;
   signature_date: string | null;
   created_at: string;

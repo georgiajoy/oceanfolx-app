@@ -55,9 +55,9 @@ export default function VolunteerParticipantsPage() {
     swim_ability_moving: 'none' as 'none' | 'poor' | 'competent' | 'advanced',
     surfing_experience: 'none' as 'none' | 'poor' | 'competent' | 'advanced',
     commitment_statement: false,
-    acknowledgment_agreement_authorization: false,
     risks_release_indemnity_agreement: false,
     media_release_agreement: false,
+    hijab_photo_preference: 'with_or_without' as 'with_or_without' | 'only_with',
     signature: '',
     signature_date: '',
   });
@@ -173,9 +173,9 @@ export default function VolunteerParticipantsPage() {
         formData.swim_ability_moving,
         formData.surfing_experience,
         formData.commitment_statement,
-        formData.acknowledgment_agreement_authorization,
         formData.risks_release_indemnity_agreement,
         formData.media_release_agreement,
+        formData.hijab_photo_preference,
         formData.signature,
         formData.signature_date
       );
@@ -208,9 +208,9 @@ export default function VolunteerParticipantsPage() {
           swim_ability_moving: 'none',
           surfing_experience: 'none',
           commitment_statement: false,
-          acknowledgment_agreement_authorization: false,
           risks_release_indemnity_agreement: false,
           media_release_agreement: false,
+          hijab_photo_preference: 'with_or_without',
           signature: '',
           signature_date: '',
         });
@@ -530,24 +530,10 @@ export default function VolunteerParticipantsPage() {
                   />
                   <Label htmlFor="commitment_statement" className="text-sm font-normal leading-tight">
                     I agree to the{' '}
-                    <a href="https://docs.google.com/document/d/1MXJWnULGRBDNQb5r8gYCfUbRBqhCGsxqpSm3DW3aVsU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    <a href="https://docs.google.com/document/d/1NKLWucJcTBEAIJYQppp5wpR5emlRn4mhh8WwA_eqc7Y/edit?usp=sharing" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                       Commitment Statement
                     </a>
                     <span className="block text-xs text-gray-500">Saya setuju dengan Pernyataan Komitmen</span>
-                  </Label>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="acknowledgment_agreement_authorization"
-                    checked={formData.acknowledgment_agreement_authorization}
-                    onCheckedChange={(checked) => setFormData({ ...formData, acknowledgment_agreement_authorization: checked as boolean })}
-                  />
-                  <Label htmlFor="acknowledgment_agreement_authorization" className="text-sm font-normal leading-tight">
-                    I agree to the{' '}
-                    <a href="https://docs.google.com/document/d/1MXJWnULGRBDNQb5r8gYCfUbRBqhCGsxqpSm3DW3aVsU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      Acknowledgment, Agreement and Authorization
-                    </a>
-                    <span className="block text-xs text-gray-500">Saya setuju dengan Pengakuan, Persetujuan dan Otorisasi</span>
                   </Label>
                 </div>
                 <div className="flex items-start space-x-2">
@@ -558,8 +544,8 @@ export default function VolunteerParticipantsPage() {
                   />
                   <Label htmlFor="risks_release_indemnity_agreement" className="text-sm font-normal leading-tight">
                     I agree to the{' '}
-                    <a href="https://docs.google.com/document/d/1MXJWnULGRBDNQb5r8gYCfUbRBqhCGsxqpSm3DW3aVsU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      Risks, Release and Indemnity Agreement
+                    <a href="https://docs.google.com/document/d/14bXajnXp_FwSqob-v81_sdGbylUYh6r9/edit?usp=sharing&ouid=104263968158926244329&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      Risks & Release and Indemnity Agreement
                     </a>
                     <span className="block text-xs text-gray-500">Saya setuju dengan Perjanjian Risiko, Pembebasan dan Ganti Rugi</span>
                   </Label>
@@ -572,20 +558,41 @@ export default function VolunteerParticipantsPage() {
                   />
                   <Label htmlFor="media_release_agreement" className="text-sm font-normal leading-tight">
                     I agree to the{' '}
-                    <a href="https://docs.google.com/document/d/1MXJWnULGRBDNQb5r8gYCfUbRBqhCGsxqpSm3DW3aVsU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      Media Release Agreement
+                    <a href="https://docs.google.com/document/d/1CYVPSTeIYhCoT8zeSzlDl_LXdBPcA_Qb/edit?usp=sharing&ouid=104263968158926244329&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      Photo/Video Media and Social Media Release Agreement
                     </a>
                     <span className="block text-xs text-gray-500">Saya setuju dengan Perjanjian Rilis Media</span>
                   </Label>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signature">
-                  Signature
-                  <span className="block text-xs text-gray-500 font-normal">Tanda Tangan</span>
+                <Label htmlFor="hijab_photo_preference">
+                  Hijab Photo Preference
+                  <span className="block text-xs text-gray-500 font-normal">Preferensi Foto Hijab</span>
+                </Label>
+                <select
+                  id="hijab_photo_preference"
+                  value={formData.hijab_photo_preference}
+                  onChange={(e) => setFormData({ ...formData, hijab_photo_preference: e.target.value as 'with_or_without' | 'only_with' })}
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="with_or_without">I am comfortable being photographed with or without my hijab</option>
+                  <option value="only_with">I am only comfortable being photographed with my hijab</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signature" className="block">
+                  <span className="text-sm font-medium">Signature Agreement</span>
+                  <span className="block text-xs text-gray-600 mt-1 leading-relaxed">
+                    By typing my name below I acknowledge I have read and agree to all the above agreements and understand there is inherent risk associated with the program and I agree to release and not sue Oceanfolx for any claims arising from participation in the Activities and to indemnify and hold harmless Oceanfolx from claims. My typed name signifies my signature and understanding.
+                  </span>
+                  <span className="block text-xs text-gray-500 mt-1">
+                    Dengan mengetikkan nama saya di bawah ini, saya mengakui bahwa saya telah membaca dan menyetujui semua perjanjian di atas dan memahami bahwa ada risiko yang melekat terkait dengan program ini dan saya setuju untuk melepaskan dan tidak menuntut Oceanfolx atas klaim apa pun yang timbul dari partisipasi dalam Kegiatan dan untuk mengganti rugi dan membebaskan Oceanfolx dari klaim. Nama yang saya ketik menandakan tanda tangan dan pemahaman saya.
+                  </span>
                 </Label>
                 <Input
                   id="signature"
+                  placeholder="Type your full name / Ketik nama lengkap Anda"
                   value={formData.signature}
                   onChange={(e) => setFormData({ ...formData, signature: e.target.value })}
                 />

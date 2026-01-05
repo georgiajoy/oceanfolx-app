@@ -98,9 +98,9 @@ export async function createUserAction(
   surfingExperience?: 'none' | 'poor' | 'competent' | 'advanced',
   // Acknowledgment and agreement fields
   commitmentStatement?: boolean,
-  acknowledgmentAgreementAuthorization?: boolean,
   risksReleaseIndemnityAgreement?: boolean,
   mediaReleaseAgreement?: boolean,
+  hijabPhotoPreference?: 'with_or_without' | 'only_with',
   signature?: string,
   signatureDate?: string
 ) {
@@ -173,9 +173,9 @@ export async function createUserAction(
         swim_ability_moving: swimAbilityMoving || null,
         surfing_experience: surfingExperience || null,
         commitment_statement: commitmentStatement || false,
-        acknowledgment_agreement_authorization: acknowledgmentAgreementAuthorization || false,
         risks_release_indemnity_agreement: risksReleaseIndemnityAgreement || false,
         media_release_agreement: mediaReleaseAgreement || false,
+        hijab_photo_preference: hijabPhotoPreference || null,
         signature: signature || null,
         signature_date: signatureDate || null,
       });
