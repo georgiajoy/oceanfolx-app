@@ -122,6 +122,8 @@ export default function UsersManagementPage() {
         formData.emergency_contact_phone,
         userLanguage,
         // New participant fields
+        formData.shoe_size,
+        formData.clothing_size,
         formData.age,
         formData.village,
         formData.number_of_children,

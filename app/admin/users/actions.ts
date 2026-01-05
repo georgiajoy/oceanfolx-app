@@ -78,6 +78,8 @@ export async function createUserAction(
   emergencyContactPhone?: string,
   preferredLanguage: Language = 'en',
   // New participant fields
+  shoeSize?: string,
+  clothingSize?: string,
   age?: string,
   village?: string,
   numberOfChildren?: string,
@@ -152,6 +154,8 @@ export async function createUserAction(
         user_id: authData.user.id,
         emergency_contact_name: emergencyContactName || null,
         emergency_contact_phone: emergencyContactPhone || null,
+        shoe_size: shoeSize || null,
+        clothing_size: clothingSize || null,
         age: age || null,
         village: village || null,
         number_of_children: numberOfChildren || null,
