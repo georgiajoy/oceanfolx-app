@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getCurrentUser, getUserProfile } from '@/lib/auth';
-import { createUserAction, deleteUserAction } from './actions';
+import { createUserAction, deleteUserAction, updateUserAction } from './actions';
 import { supabase, Language, UserProfile, UserRole } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Search, Trash2, Edit3 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function UsersManagementPage() {
@@ -27,11 +27,20 @@ export default function UsersManagementPage() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [formData, setFormData] = useState({
+  const defaultFormData = {
     phone: '',
     password: '',
     role: 'participant' as UserRole,
     full_name: '',
+    preferred_name: '',
+    birthday: '',
+    allergies: '',
+    bpjs_number: '',
+    profile_photo_url: '',
+    notes: '',
+    code_of_conduct_url: '',
+    safeguarding_policy_url: '',
+    indemnity_agreement_url: '',
     emergency_contact_name: '',
     emergency_contact_phone: '',
     shoe_size: '',
@@ -58,11 +67,109 @@ export default function UsersManagementPage() {
     hijab_photo_preference: 'with_or_without' as 'with_or_without' | 'only_with',
     signature: '',
     signature_date: '',
-  });
+  };
+  const [formData, setFormData] = useState(defaultFormData);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [levels, setLevels] = useState<Array<{ id: string; name_en: string; name_id: string }>>([]);
+  const [usersWithLevels, setUsersWithLevels] = useState<Array<UserProfile & { highest_level?: string }>>([]);
   const t = useTranslation(language);
+  const isEditing = Boolean(editingUser);
+
+  function getPolicyUrlsForRole(role: UserRole) {
+    if (role === 'local_leader') {
+      return {
+        code_of_conduct_url: 'https://docs.google.com/document/d/1yoosDEv4FWcuuPkQAyGOjmuv35mJpVAL',
+        safeguarding_policy_url: 'https://docs.google.com/document/d/1bJEFsidVXBV7r-69Z9MtCkwCITKsMLEq',
+        indemnity_agreement_url: 'https://docs.google.com/document/d/14bXajnXp_FwSqob-v81_sdGbylUYh6r9',
+      };
+    }
+
+    if (role === 'admin' || role === 'intern') {
+      return {
+        code_of_conduct_url: 'https://docs.google.com/document/d/131Px2JzGfkSwPalBCs8L-',
+        safeguarding_policy_url: 'https://docs.google.com/document/d/1bGdLmOJsBYk2OKpYUrMYIheRooHCKyeO',
+        indemnity_agreement_url: '',
+      };
+    }
+
+    return {
+      code_of_conduct_url: '',
+      safeguarding_policy_url: '',
+      indemnity_agreement_url: '',
+    };
+  }
+
+  function openCreateUserDialog() {
+    setEditingUser(null);
+    setFormData(defaultFormData);
+    setIsDialogOpen(true);
+  }
+
+  async function openEditUserDialog(user: UserProfile) {
+    setEditingUser(user);
+
+    let participantData: any = null;
+    if (user.role === 'participant') {
+      const { data, error } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading participant row for edit:', error);
+      } else {
+        participantData = data;
+      }
+    }
+
+    setFormData({
+      ...defaultFormData,
+      phone: user.phone || '',
+      role: user.role,
+      full_name: user.full_name || '',
+      preferred_name: user.preferred_name || '',
+      birthday: user.birthday || '',
+      allergies: user.allergies || '',
+      bpjs_number: user.bpjs_number || '',
+      profile_photo_url: user.profile_photo_url || '',
+      notes: user.notes || '',
+      code_of_conduct_url: user.code_of_conduct_url || '',
+      safeguarding_policy_url: user.safeguarding_policy_url || '',
+      indemnity_agreement_url: user.indemnity_agreement_url || '',
+      emergency_contact_name: participantData?.emergency_contact_name ?? user.emergency_contact_name ?? '',
+      emergency_contact_phone: participantData?.emergency_contact_phone ?? user.emergency_contact_phone ?? '',
+      shoe_size: participantData?.shoe_size ?? user.shoe_size ?? '',
+      clothing_size: participantData?.clothing_size ?? user.clothing_size ?? '',
+      age: participantData?.age ?? user.age ?? '',
+      village: participantData?.village ?? user.village ?? '',
+      number_of_children: participantData?.number_of_children ?? user.number_of_children ?? '',
+      respiratory_issues: participantData?.respiratory_issues ?? user.respiratory_issues ?? '',
+      diabetes: participantData?.diabetes ?? user.diabetes ?? '',
+      neurological_conditions: participantData?.neurological_conditions ?? user.neurological_conditions ?? '',
+      chronic_illnesses: participantData?.chronic_illnesses ?? user.chronic_illnesses ?? '',
+      head_injuries: participantData?.head_injuries ?? user.head_injuries ?? '',
+      hospitalizations: participantData?.hospitalizations ?? user.hospitalizations ?? '',
+      medications: participantData?.medications ?? user.medications ?? defaultFormData.medications,
+      medications_not_taking_during_program: participantData?.medications_not_taking_during_program ?? user.medications_not_taking_during_program ?? '',
+      medical_dietary_requirements: participantData?.medical_dietary_requirements ?? user.medical_dietary_requirements ?? '',
+      religious_personal_dietary_restrictions: participantData?.religious_personal_dietary_restrictions ?? user.religious_personal_dietary_restrictions ?? '',
+      swim_ability_calm: participantData?.swim_ability_calm ?? user.swim_ability_calm ?? 'none',
+      swim_ability_moving: participantData?.swim_ability_moving ?? user.swim_ability_moving ?? 'none',
+      surfing_experience: participantData?.surfing_experience ?? user.surfing_experience ?? 'none',
+      commitment_statement: participantData?.commitment_statement ?? Boolean(user.commitment_statement),
+      risks_release_indemnity_agreement: participantData?.risks_release_indemnity_agreement ?? Boolean(user.risks_release_indemnity_agreement),
+      media_release_agreement: participantData?.media_release_agreement ?? Boolean(user.media_release_agreement),
+      hijab_photo_preference: participantData?.hijab_photo_preference ?? user.hijab_photo_preference ?? 'with_or_without',
+      signature: participantData?.signature ?? user.signature ?? '',
+      signature_date: participantData?.signature_date ?? user.signature_date ?? '',
+    });
+    setIsDialogOpen(true);
+  }
 
   useEffect(() => {
     loadLanguage();
+    loadLevels();
     loadUsers();
   }, []);
 
@@ -81,16 +188,71 @@ export default function UsersManagementPage() {
     }
   }
 
+  async function loadLevels() {
+    try {
+      const { data, error } = await supabase
+        .from('levels')
+        .select('id, name_en, name_id')
+        .order('order_number');
+
+      if (error) throw error;
+      setLevels(data || []);
+    } catch (error) {
+      console.error('Error loading levels:', error);
+    }
+  }
+
   async function loadUsers() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data || []);
+      if (usersError) throw usersError;
+      setUsers(usersData || []);
+
+      // Fetch highest level for each participant
+      const usersWithLevelData = await Promise.all(
+        (usersData || []).map(async (user) => {
+          if (user.role !== 'participant') {
+            return { ...user, highest_level: undefined };
+          }
+
+          try {
+            const { data: participantData } = await supabase
+              .from('participants')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (!participantData) {
+              return { ...user, highest_level: undefined };
+            }
+
+            const { data: progressData } = await supabase
+              .from('participant_progress')
+              .select('level:levels(id, name_en, name_id)')
+              .eq('participant_id', participantData.id)
+              .not('level_id', 'is', null)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (progressData && progressData.level) {
+              const levelData = progressData.level as any;
+              return { ...user, highest_level: levelData.id, highest_level_name: levelData };
+            }
+            return { ...user, highest_level: undefined };
+          } catch (error) {
+            console.error('Error fetching level for user:', user.id, error);
+            return { ...user, highest_level: undefined };
+          }
+        })
+      );
+
+      setUsersWithLevels(usersWithLevelData);
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
@@ -121,6 +283,15 @@ export default function UsersManagementPage() {
         formData.emergency_contact_name,
         formData.emergency_contact_phone,
         userLanguage,
+        formData.preferred_name,
+        formData.birthday,
+        formData.allergies,
+        formData.bpjs_number,
+        formData.profile_photo_url,
+        formData.notes,
+        formData.code_of_conduct_url,
+        formData.safeguarding_policy_url,
+        formData.indemnity_agreement_url,
         // New participant fields
         formData.shoe_size,
         formData.clothing_size,
@@ -150,44 +321,79 @@ export default function UsersManagementPage() {
       );
 
       if (result.success) {
-        setFormData({
-          phone: '',
-          password: '',
-          role: 'participant',
-          full_name: '',
-          emergency_contact_name: '',
-          emergency_contact_phone: '',
-          shoe_size: '',
-          clothing_size: '',
-          age: '',
-          village: '',
-          number_of_children: '',
-          respiratory_issues: '',
-          diabetes: '',
-          neurological_conditions: '',
-          chronic_illnesses: '',
-          head_injuries: '',
-          hospitalizations: '',
-          medications: 'Type of Medication (Jenis Obat): \nReason for Medication (Alasan Mengonsumsi Obat): \nDosage (Dosis): \nFrequency (Frekuensi): \nSide Effects (Efek Samping): \nEffects of Missed Dose (Efek jika Dosis Terlewat):',
-          medications_not_taking_during_program: '',
-          medical_dietary_requirements: '',
-          religious_personal_dietary_restrictions: '',
-          swim_ability_calm: 'none',
-          swim_ability_moving: 'none',
-          surfing_experience: 'none',
-          commitment_statement: false,
-          risks_release_indemnity_agreement: false,
-          media_release_agreement: false,
-          hijab_photo_preference: 'with_or_without',
-          signature: '',
-          signature_date: '',
-        });
+        setEditingUser(null);
+        setFormData(defaultFormData);
         setIsDialogOpen(false);
         setSuccessMessage('User created successfully!');
         loadUsers();
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create user');
+    }
+  }
+
+  async function handleUpdateUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      const userLanguage = editingUser.preferred_language || (formData.role === 'participant' ? 'id' : 'en');
+
+      const result = await updateUserAction(
+        editingUser.id,
+        formData.phone,
+        formData.role,
+        formData.full_name,
+        formData.emergency_contact_name,
+        formData.emergency_contact_phone,
+        userLanguage,
+        formData.preferred_name,
+        formData.birthday,
+        formData.allergies,
+        formData.bpjs_number,
+        formData.profile_photo_url,
+        formData.notes,
+        formData.code_of_conduct_url,
+        formData.safeguarding_policy_url,
+        formData.indemnity_agreement_url,
+        formData.shoe_size,
+        formData.clothing_size,
+        formData.age,
+        formData.village,
+        formData.number_of_children,
+        formData.respiratory_issues,
+        formData.diabetes,
+        formData.neurological_conditions,
+        formData.chronic_illnesses,
+        formData.head_injuries,
+        formData.hospitalizations,
+        formData.medications,
+        formData.medications_not_taking_during_program,
+        formData.medical_dietary_requirements,
+        formData.religious_personal_dietary_restrictions,
+        formData.swim_ability_calm,
+        formData.swim_ability_moving,
+        formData.surfing_experience,
+        formData.commitment_statement,
+        formData.risks_release_indemnity_agreement,
+        formData.media_release_agreement,
+        formData.hijab_photo_preference,
+        formData.signature,
+        formData.signature_date
+      );
+
+      if (result.success) {
+        setEditingUser(null);
+        setFormData(defaultFormData);
+        setIsDialogOpen(false);
+        setSuccessMessage('User updated successfully!');
+        loadUsers();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update user');
     }
   }
 
@@ -210,17 +416,20 @@ export default function UsersManagementPage() {
     }
   }
 
-  const filteredUsers = users.filter(u =>
-    u.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = usersWithLevels.filter(u => {
+    const searchTermLower = searchTerm.toLowerCase();
+    return (
+      u.phone?.toLowerCase().includes(searchTermLower) ||
+      u.role.toLowerCase().includes(searchTermLower) ||
+      u.full_name?.toLowerCase().includes(searchTermLower)
+    );
+  });
 
   function getRoleBadgeVariant(role: UserRole) {
     switch (role) {
       case 'admin':
         return 'destructive' as const;
-      case 'volunteer':
+      case 'intern':
         return 'default' as const;
       case 'participant':
         return 'secondary' as const;
@@ -237,9 +446,15 @@ export default function UsersManagementPage() {
             <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">User Management</h2>
             <p className="text-xs sm:text-sm text-[#443837]/70 mt-1">Manage all users in the system</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if (!open) {
+              setEditingUser(null);
+              setFormData(defaultFormData);
+            }
+            setIsDialogOpen(open);
+          }}>
             <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
+                <Button onClick={openCreateUserDialog} className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Add User</span>
                   <span className="sm:hidden">Add</span>
@@ -247,9 +462,9 @@ export default function UsersManagementPage() {
               </DialogTrigger>
               <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                  <DialogTitle>Add New User</DialogTitle>
+                  <DialogTitle>{isEditing ? 'Edit User' : 'Add New User'}</DialogTitle>
                 </DialogHeader>
-            <form onSubmit={handleCreateUser} className="space-y-4 overflow-y-auto flex-1 pr-2">
+            <form onSubmit={isEditing ? handleUpdateUser : handleCreateUser} className="space-y-4 overflow-y-auto flex-1 pr-2">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
@@ -262,18 +477,25 @@ export default function UsersManagementPage() {
                 />
                 <p className="text-xs text-gray-500">Include country code (e.g., +62 for Indonesia)</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Minimum 6 characters"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  minLength={6}
-                />
-              </div>
+              {!isEditing ? (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Minimum 6 characters"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <p className="text-sm text-gray-500">Password cannot be updated here.</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
                 <select
@@ -284,7 +506,8 @@ export default function UsersManagementPage() {
                   required
                 >
                   <option value="participant">Participant</option>
-                  <option value="volunteer">Volunteer</option>
+                  <option value="intern">Intern</option>
+                  <option value="local_leader">Local Leader</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
@@ -300,8 +523,52 @@ export default function UsersManagementPage() {
                   required
                 />
               </div>
-              {formData.role === 'participant' && (
-                <>
+              <div className="space-y-2">
+                <Label htmlFor="preferred_name">
+                  Preferred Name
+                  <span className="block text-xs text-gray-500 font-normal">Nama Panggilan</span>
+                </Label>
+                <Input
+                  id="preferred_name"
+                  value={formData.preferred_name}
+                  onChange={(e) => setFormData({ ...formData, preferred_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthday">
+                  Birthday
+                  <span className="block text-xs text-gray-500 font-normal">Tanggal Lahir</span>
+                </Label>
+                <Input
+                  id="birthday"
+                  type="date"
+                  value={formData.birthday}
+                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="allergies">
+                  Allergies
+                  <span className="block text-xs text-gray-500 font-normal">Alergi</span>
+                </Label>
+                <Input
+                  id="allergies"
+                  value={formData.allergies}
+                  onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                  placeholder="e.g., Peanuts, Shellfish"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bpjs_number">
+                  BPJS Number
+                  <span className="block text-xs text-gray-500 font-normal">Nomor BPJS</span>
+                </Label>
+                <Input
+                  id="bpjs_number"
+                  value={formData.bpjs_number}
+                  onChange={(e) => setFormData({ ...formData, bpjs_number: e.target.value })}
+                />
+              </div>
                   <div className="space-y-2">
                     <Label htmlFor="emergency_contact_name">
                       Emergency Contact Name
@@ -549,6 +816,72 @@ export default function UsersManagementPage() {
                   {/* Acknowledgment and Agreement Checkboxes */}
                   <div className="space-y-4 pt-4 border-t">
                     <h3 className="font-semibold text-sm">Acknowledgments & Agreements</h3>
+
+                    {(formData.role === 'admin' || formData.role === 'intern' || formData.role === 'local_leader') && (
+                      <>
+                        <div className="flex items-start space-x-2">
+                          <Checkbox id="policy_code_of_conduct" />
+                          <div className="grid gap-1.5 leading-none">
+                            <label
+                              htmlFor="policy_code_of_conduct"
+                              className="text-sm font-medium leading-none"
+                            >
+                              Code of Conduct{' '}
+                              <a
+                                href={getPolicyUrlsForRole(formData.role).code_of_conduct_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                (View Document)
+                              </a>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start space-x-2">
+                          <Checkbox id="policy_safeguarding" />
+                          <div className="grid gap-1.5 leading-none">
+                            <label
+                              htmlFor="policy_safeguarding"
+                              className="text-sm font-medium leading-none"
+                            >
+                              Safeguarding Policy{' '}
+                              <a
+                                href={getPolicyUrlsForRole(formData.role).safeguarding_policy_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                (View Document)
+                              </a>
+                            </label>
+                          </div>
+                        </div>
+
+                        {formData.role === 'local_leader' && (
+                          <div className="flex items-start space-x-2">
+                            <Checkbox id="policy_indemnity" />
+                            <div className="grid gap-1.5 leading-none">
+                              <label
+                                htmlFor="policy_indemnity"
+                                className="text-sm font-medium leading-none"
+                              >
+                                Indemnity Agreement{' '}
+                                <a
+                                  href={getPolicyUrlsForRole(formData.role).indemnity_agreement_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  (View Document)
+                                </a>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                     
                     <div className="flex items-start space-x-2">
                       <Checkbox
@@ -656,16 +989,6 @@ export default function UsersManagementPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signature_date">Signature Date</Label>
-                      <Input
-                        id="signature"
-                        value={formData.signature}
-                        onChange={(e) => setFormData({ ...formData, signature: e.target.value })}
-                        placeholder="Enter participant's full name"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
                       <Label htmlFor="signature_date">Date of Signature</Label>
                       <Input
                         id="signature_date"
@@ -675,15 +998,13 @@ export default function UsersManagementPage() {
                       />
                     </div>
                   </div>
-                </>
-              )}
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1">{t('create')}</Button>
+                <Button type="submit" className="flex-1">{isEditing ? 'Update' : t('create')}</Button>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   {t('cancel')}
                 </Button>
@@ -706,11 +1027,11 @@ export default function UsersManagementPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+          <div className="space-y-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by phone or role..."
+                placeholder="Search by phone, name, or role..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -729,20 +1050,25 @@ export default function UsersManagementPage() {
                     <TableHead>Full Name</TableHead>
                     <TableHead>Phone Number</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Highest Level</TableHead>
+                    <TableHead>Hijab Preference</TableHead>
                     <TableHead>Language</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       {t('no_data')}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  filteredUsers.map((user) => {
+                    const userLevel = levels.find(l => l.id === (user as any).highest_level);
+                    const levelName = userLevel ? (language === 'en' ? userLevel.name_en : userLevel.name_id) : '—';
+                    const hijabLabel = user.hijab_photo_preference === 'only_with' ? 'With Hijab' : user.hijab_photo_preference === 'with_or_without' ? 'With/Without' : '—';
+                    return (
                     <TableRow key={user.id}>
                       <TableCell>{user.full_name || '—'}</TableCell>
                       <TableCell className="font-medium">{user.phone || 'N/A'}</TableCell>
@@ -751,15 +1077,22 @@ export default function UsersManagementPage() {
                           {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-sm">{levelName}</TableCell>
+                      <TableCell className="text-sm">{hijabLabel}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
                           {user.preferred_language.toUpperCase()}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openEditUserDialog(user)}
+                          className="text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -791,7 +1124,8 @@ export default function UsersManagementPage() {
                           </AlertDialog>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

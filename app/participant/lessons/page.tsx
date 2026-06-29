@@ -30,7 +30,7 @@ interface Attendance {
   id: string;
   session_id: string;
   participant_id: string;
-  status: string;
+  status: 'signed_up' | 'present' | 'self_reported';
   validated_by_volunteer_id: string | null;
 }
 
@@ -144,33 +144,7 @@ export default function ParticipantLessonsPage() {
     }
   }
 
-  async function handleCheckIn(sessionId: string) {
-    if (!participantId) return;
 
-    setError('');
-    setSuccessMessage('');
-
-    try {
-      const { error: checkInError } = await supabase
-        .from('session_participants')
-        .upsert(
-          {
-            session_id: sessionId,
-            participant_id: participantId,
-            status: 'self_reported',
-            marked_at: new Date().toISOString(),
-          },
-          { onConflict: 'session_id,participant_id' }
-        );
-
-      if (checkInError) throw checkInError;
-
-      setSuccessMessage(t('checked_in_here_today'));
-      loadData();
-    } catch (err: any) {
-      setError(err.message || t('failed_check_in'));
-    }
-  }
 
   function isSignedUp(sessionId: string): boolean {
     return signups.some(s => s.session_id === sessionId);
@@ -284,9 +258,7 @@ export default function ParticipantLessonsPage() {
                               {t('awaiting_validation_badge')}
                             </Badge>
                           )}
-                          {attendanceStatus.status === 'absent' && (
-                            <Badge variant="destructive">{t('marked_absent_badge')}</Badge>
-                          )}
+
                         </div>
                       ) : signedUp ? (
                         <Badge className="bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] text-white border-0 shadow-md">
@@ -303,15 +275,6 @@ export default function ParticipantLessonsPage() {
                       <>
                         {signedUp ? (
                           <>
-                            {todayLesson && (
-                              <Button
-                                onClick={() => handleCheckIn(session.id)}
-                                className="bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] hover:from-[#3AA8BC] hover:to-[#2A9FB4] text-white shadow-md"
-                              >
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                {t('im_here_today')}
-                              </Button>
-                            )}
                             <Button
                               variant="outline"
                               onClick={() => handleCancelSignup(session.id)}

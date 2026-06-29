@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
 import { getCurrentUser, getUserProfile } from '@/lib/auth';
 import { supabase, Language, Participant, Level, Skill, ParticipantSkill, ParticipantLevel } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
@@ -9,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Award, User, Plus, X, Calendar, Edit, Save } from 'lucide-react';
+import { Award, User, Plus, X, Calendar, Edit, Save, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ProfilePhotoUpload } from '@/components/ProfilePhotoUpload';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface ParticipantSkillWithDetails extends ParticipantSkill {
   skill: Skill;
@@ -23,23 +23,39 @@ interface ParticipantLevelWithDetails extends ParticipantLevel {
   level: Level;
 }
 
-export default function VolunteerParticipantDetailPage() {
-  const params = useParams();
-  const participantId = params.id as string;
+interface AttendanceHistory {
+  id: string;
+  session_id?: string;
+  status: string;
+  marked_at: string;
+  notes?: string;
+  session?: {
+    date: string;
+    time: string;
+    type: string;
+  } | {
+    date: string;
+    time: string;
+    type: string;
+  }[];
+}
+
+export default function VolunteerParticipantDetailPage({ params }: { params: { id: string } }) {
+  const participantId = params.id;
   const [language, setLanguage] = useState<Language>('en');
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [participantSkills, setParticipantSkills] = useState<ParticipantSkillWithDetails[]>([]);
   const [participantLevels, setParticipantLevels] = useState<ParticipantLevelWithDetails[]>([]);
   const [allLevels, setAllLevels] = useState<Level[]>([]);
   const [allSkills, setAllSkills] = useState<Skill[]>([]);
-  const [volunteerId, setVolunteerId] = useState<string>('');
+  const [volunteerId, setAdminId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [showAddSkill, setShowAddSkill] = useState(false);
   const [showAddLevel, setShowAddLevel] = useState(false);
-  const [selectedSkillId, setSelectedSkillId] = useState('');
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [selectedLevelId, setSelectedLevelId] = useState('');
   const [editingInfo, setEditingInfo] = useState(false);
+  const [lessonHistory, setLessonHistory] = useState<AttendanceHistory[]>([]);
   const [participantForm, setParticipantForm] = useState({
     full_name: '',
     emergency_contact_name: '',
@@ -71,11 +87,7 @@ export default function VolunteerParticipantDetailPage() {
   });
   const t = useTranslation(language);
 
-  useEffect(() => {
-    loadData();
-  }, [participantId]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const user = await getCurrentUser();
@@ -83,16 +95,17 @@ export default function VolunteerParticipantDetailPage() {
         const profile = await getUserProfile(user.id);
         if (profile) {
           setLanguage(profile.preferred_language);
-          setVolunteerId(user.id);
+          setAdminId(user.id);
         }
       }
 
-      const [participantResult, skillsResult, levelsResult, participantSkillsResult, participantLevelsResult] = await Promise.all([
+      const [participantResult, skillsResult, levelsResult, participantSkillsResult, participantLevelsResult, lessonHistoryResult] = await Promise.all([
         supabase.from('participants').select('*, user:users(full_name)').eq('id', participantId).maybeSingle(),
         supabase.from('skills').select('*').order('order_number'),
         supabase.from('levels').select('*').order('order_number'),
         supabase.from('participant_progress').select('*, skill:skills(*)').eq('participant_id', participantId).not('skill_id','is', null),
         supabase.from('participant_progress').select('*, level:levels(*)').eq('participant_id', participantId).not('level_id','is', null),
+        supabase.from('session_participants').select('id, status, marked_at, notes, session:sessions(date, time, type)').eq('participant_id', participantId).order('marked_at', { ascending: false }),
       ]);
 
       if (participantResult.error) throw participantResult.error;
@@ -100,7 +113,9 @@ export default function VolunteerParticipantDetailPage() {
       if (levelsResult.error) throw levelsResult.error;
       if (participantSkillsResult.error) throw participantSkillsResult.error;
       if (participantLevelsResult.error) throw participantLevelsResult.error;
+      if (lessonHistoryResult.error) throw lessonHistoryResult.error;
 
+      // Map user.full_name to participant.full_name for backward compatibility
       const pData = participantResult.data as any;
       const mappedParticipant = pData ? { ...pData, full_name: pData.user?.full_name || pData.full_name || '' } : null;
       setParticipant(mappedParticipant);
@@ -108,6 +123,7 @@ export default function VolunteerParticipantDetailPage() {
       setAllLevels(levelsResult.data || []);
       setParticipantSkills(participantSkillsResult.data as ParticipantSkillWithDetails[] || []);
       setParticipantLevels(participantLevelsResult.data as ParticipantLevelWithDetails[] || []);
+      setLessonHistory((lessonHistoryResult.data || []) as AttendanceHistory[]);
 
       if (mappedParticipant) {
         setParticipantForm({
@@ -145,53 +161,7 @@ export default function VolunteerParticipantDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleAddSkill() {
-    if (!selectedSkillId) return;
-
-    try {
-      setMessage('');
-      const { error } = await supabase
-        .from('participant_progress')
-        .insert({
-          participant_id: participantId,
-          skill_id: selectedSkillId,
-          validated_by_volunteer_id: volunteerId,
-          achieved_date: new Date().toISOString().split('T')[0],
-        });
-
-      if (error) throw error;
-
-      setMessage('Skill added successfully!');
-      setSelectedSkillId('');
-      setShowAddSkill(false);
-      loadData();
-    } catch (error: any) {
-      if (error.code === '23505') {
-        setMessage('This skill is already assigned to the participant');
-      } else {
-        setMessage('Error adding skill: ' + error.message);
-      }
-    }
-  }
-
-  async function handleRemoveSkill(skillId: string) {
-    try {
-      setMessage('');
-      const { error } = await supabase
-        .from('participant_progress')
-        .delete()
-        .eq('id', skillId);
-
-      if (error) throw error;
-
-      setMessage('Skill removed successfully!');
-      loadData();
-    } catch (error: any) {
-      setMessage('Error removing skill: ' + error.message);
-    }
-  }
+  }, [participantId]);
 
   async function handleAddLevel() {
     if (!selectedLevelId) return;
@@ -239,9 +209,43 @@ export default function VolunteerParticipantDetailPage() {
     }
   }
 
+  async function handleToggleSkill(skillId: string) {
+    try {
+      setMessage('');
+      const existing = participantSkills.find((ps) => ps.skill_id === skillId);
+
+      if (existing) {
+        const { error } = await supabase
+          .from('participant_progress')
+          .delete()
+          .eq('id', existing.id);
+
+        if (error) throw error;
+        setMessage('Skill removed successfully!');
+      } else {
+        const { error } = await supabase
+          .from('participant_progress')
+          .insert({
+            participant_id: participantId,
+            skill_id: skillId,
+            validated_by_volunteer_id: volunteerId,
+            achieved_date: new Date().toISOString().split('T')[0],
+          });
+
+        if (error) throw error;
+        setMessage('Skill marked complete!');
+      }
+
+      loadData();
+    } catch (error: any) {
+      setMessage('Error updating skill: ' + error.message);
+    }
+  }
+
   async function handleSaveParticipantInfo() {
     try {
       setMessage('');
+      // Update users.full_name and participant-specific fields on participants
       const userId = participant?.user_id;
       if (userId) {
         const { error: userError } = await supabase
@@ -302,10 +306,19 @@ export default function VolunteerParticipantDetailPage() {
   }
 
   const assignedSkillIds = participantSkills.map(ps => ps.skill_id);
-  const availableSkills = allSkills.filter(s => !assignedSkillIds.includes(s.id));
 
   const assignedLevelIds = participantLevels.map(pl => pl.level_id);
   const availableLevels = allLevels.filter(l => !assignedLevelIds.includes(l.id));
+
+  const sortedLevels = [...allLevels].sort((a, b) => a.order_number - b.order_number);
+  const currentLevel = sortedLevels[currentLevelIndex];
+  const levelSkills = currentLevel ? allSkills.filter((skill) => skill.level_id === currentLevel.id).sort((a, b) => a.order_number - b.order_number) : [];
+  const completedSkillCount = levelSkills.filter((skill) => assignedSkillIds.includes(skill.id)).length;
+  const currentLevelComplete = levelSkills.length === 0 || completedSkillCount === levelSkills.length;
+  const previousLevelsComplete = currentLevelIndex === 0 || sortedLevels.slice(0, currentLevelIndex).every((level) => {
+    const previousSkills = allSkills.filter((skill) => skill.level_id === level.id);
+    return previousSkills.length === 0 || previousSkills.every((skill) => assignedSkillIds.includes(skill.id));
+  });
 
   function handlePhotoUpdate(url: string) {
     if (participant) {
@@ -316,8 +329,8 @@ export default function VolunteerParticipantDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-[#443837]">{participant.full_name}</h2>
-        <p className="mt-2 text-sm text-[#443837]/70">Manage participant progress</p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">{participant.full_name}</h2>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#443837]/70">Manage participant progress</p>
       </div>
 
       {message && (
@@ -328,18 +341,19 @@ export default function VolunteerParticipantDetailPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
               Participant Information
             </CardTitle>
             {!editingInfo ? (
-              <Button size="sm" variant="outline" onClick={() => setEditingInfo(true)}>
-                <Edit className="h-4 w-4 mr-1" />
-                Edit Info
+              <Button size="sm" variant="outline" onClick={() => setEditingInfo(true)} className="w-full sm:w-auto">
+                <Edit className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Edit Info</span>
+                <span className="sm:hidden ml-1">Edit</span>
               </Button>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button size="sm" variant="outline" onClick={() => {
                   setEditingInfo(false);
                   setParticipantForm({
@@ -890,73 +904,174 @@ export default function VolunteerParticipantDetailPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              Assigned Skills
-            </CardTitle>
-            <Button size="sm" onClick={() => setShowAddSkill(!showAddSkill)}>
-              {showAddSkill ? <X className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-              {showAddSkill ? 'Cancel' : 'Add Skill'}
-            </Button>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Skill Progress by Level
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                {currentLevel ? (
+                  levelSkills.length === 0 ? (
+                    `${language === 'en' ? currentLevel.name_en : currentLevel.name_id} — No skills defined for this level`
+                  ) : (
+                    `${language === 'en' ? currentLevel.name_en : currentLevel.name_id} — ${completedSkillCount}/${levelSkills.length} skills completed`
+                  )
+                ) : (
+                  'No levels available yet'
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentLevelIndex(Math.max(0, currentLevelIndex - 1))}
+                disabled={currentLevelIndex === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentLevelIndex(Math.min(sortedLevels.length - 1, currentLevelIndex + 1))}
+                disabled={!currentLevel || !currentLevelComplete || currentLevelIndex === sortedLevels.length - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {showAddSkill && (
-            <div className="mb-4 p-4 border rounded-lg bg-green-50">
-              <Label>Select Skill to Add</Label>
-              <div className="flex gap-2 mt-2">
-                <select
-                  value={selectedSkillId}
-                  onChange={(e) => setSelectedSkillId(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded-md"
-                >
-                  <option value="">Choose a skill...</option>
-                  {availableSkills.map((skill) => (
-                    <option key={skill.id} value={skill.id}>
-                      {language === 'en' ? skill.name_en : skill.name_id}
-                    </option>
-                  ))}
-                </select>
-                <Button onClick={handleAddSkill} disabled={!selectedSkillId}>
-                  Add
-                </Button>
-              </div>
+          {!currentLevel ? (
+            <p className="text-gray-500 py-4">No levels are defined yet. Add a level first to assign skills.</p>
+          ) : (
+            <div className="space-y-4">
+              {!previousLevelsComplete && (
+                <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm text-orange-700">
+                  Complete the previous levels before moving to this level.
+                </div>
+              )}
+              {levelSkills.length === 0 ? (
+                <p className="text-gray-500 py-4">No skills defined for this level yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {levelSkills.map((skill) => {
+                    const assigned = assignedSkillIds.includes(skill.id);
+                    const assignment = participantSkills.find((ps) => ps.skill_id === skill.id);
+                    return (
+                      <div key={skill.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-white sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={assigned}
+                            onCheckedChange={() => handleToggleSkill(skill.id)}
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{language === 'en' ? skill.name_en : skill.name_id}</span>
+                              {assigned && assignment?.achieved_date && (
+                                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                                  {new Date(assignment.achieved_date).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {language === 'en' ? skill.description_en : skill.description_id}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {skill.video_url ? (
+                            <a
+                              href={skill.video_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-blue-600 hover:underline"
+                            >
+                              Video demo
+                            </a>
+                          ) : null}
+                          <Button
+                            size="sm"
+                            variant={assigned ? 'outline' : 'secondary'}
+                            onClick={() => handleToggleSkill(skill.id)}
+                          >
+                            {assigned ? (
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="h-4 w-4" />
+                                Remove
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="h-4 w-4" />
+                                Mark complete
+                              </span>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {participantSkills.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No skills assigned yet</p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Lesson Attendance History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {lessonHistory.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No attendance records yet</div>
           ) : (
-            <div className="space-y-3">
-              {participantSkills.map((ps) => (
-                <div key={ps.id} className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="default">
-                        {language === 'en' ? ps.skill.name_en : ps.skill.name_id}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Marked At</TableHead>
+                  <TableHead>Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lessonHistory.map((attendance) => {
+                  const sessionData = Array.isArray(attendance.session) ? attendance.session[0] : attendance.session;
+                  return (
+                  <TableRow key={attendance.id}>
+                    <TableCell className="font-medium">
+                      {sessionData?.date ? new Date(sessionData.date).toLocaleDateString() : '-'}
+                    </TableCell>
+                    <TableCell>{sessionData?.type ? sessionData.type.replace('_', ' ') : '-'}</TableCell>
+                    <TableCell>{sessionData?.time || '-'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          attendance.status === 'present'
+                            ? 'bg-green-100 text-green-700'
+                            : attendance.status === 'self_reported'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }
+                      >
+                        {attendance.status.replace('_', ' ')}
                       </Badge>
-                      {ps.achieved_date && (
-                        <span className="text-sm text-gray-500 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(ps.achieved_date).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {language === 'en' ? ps.skill.description_en : ps.skill.description_id}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleRemoveSkill(ps.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {attendance.marked_at ? new Date(attendance.marked_at).toLocaleString() : '-'}
+                    </TableCell>
+                    <TableCell className="text-sm max-w-xs truncate">{attendance.notes || '-'}</TableCell>
+                  </TableRow>
+                )})}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

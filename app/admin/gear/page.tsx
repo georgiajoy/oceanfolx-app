@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Edit } from 'lucide-react';
+import { Plus, Package, Edit, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 interface GearInventoryWithType extends GearInventory {
@@ -132,6 +132,31 @@ export default function AdminGearManagement() {
       loadData();
     } catch (error) {
       console.error('Error updating inventory:', error);
+    }
+  }
+
+  async function handleDeleteInventory(item: GearInventoryWithType) {
+    const assigned = item.quantity_total - item.quantity_available;
+    if (assigned > 0) {
+      alert('Cannot delete inventory that has assigned items. Remove assignments first.');
+      return;
+    }
+
+    if (!confirm(`Delete ${item.gear_types.name} (size ${item.size})? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('gear_inventory')
+        .delete()
+        .eq('id', item.id);
+
+      if (error) throw error;
+      loadData();
+    } catch (error) {
+      console.error('Error deleting inventory:', error);
+      alert('Failed to delete inventory item.');
     }
   }
 
@@ -303,13 +328,23 @@ export default function AdminGearManagement() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingInventory(item)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingInventory(item)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteInventory(item)}
+                          aria-label="Delete inventory"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

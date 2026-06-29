@@ -21,7 +21,6 @@ export default function ParticipantAttendancePage() {
   const [attendance, setAttendance] = useState<AttendanceWithSession[]>([]);
   const [todaySessions, setTodaySessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const [checkInMessage, setCheckInMessage] = useState('');
   const { language } = useLanguage();
   const t = useTranslation(language);
 
@@ -74,43 +73,7 @@ export default function ParticipantAttendancePage() {
     }
   }
 
-  async function handleSelfCheckIn(sessionId: string) {
-    if (!participant) return;
 
-    try {
-      setCheckInMessage('');
-
-      const existing = attendance.find(
-        a => a.session_id === sessionId && a.participant_id === participant.id
-      );
-
-      if (existing) {
-        setCheckInMessage(language === 'en'
-          ? 'You have already checked in for this session'
-          : 'Anda sudah check-in untuk sesi ini');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('session_participants')
-        .insert({
-          session_id: sessionId,
-          participant_id: participant.id,
-          status: 'self_reported',
-        });
-
-      if (error) throw error;
-
-      setCheckInMessage(language === 'en'
-        ? 'Check-in successful! Please wait for volunteer validation.'
-        : 'Check-in berhasil! Silakan tunggu validasi relawan.');
-
-      loadData();
-    } catch (error: any) {
-      console.error('Error checking in:', error);
-      setCheckInMessage(error.message || 'Failed to check in');
-    }
-  }
 
   if (loading) {
     return <div className="text-center py-8">{t('loading')}</div>;
@@ -167,27 +130,19 @@ export default function ParticipantAttendancePage() {
                         {session.time}
                       </div>
                     </div>
-                    <Button
-                      onClick={() => handleSelfCheckIn(session.id)}
-                      disabled={disabled}
+                    <Badge
                       className={isValidated
-                        ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md"
+                        ? "bg-gradient-to-r from-green-500 to-green-600 text-white"
                         : isSelfReported
-                        ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md"
-                        : "bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] hover:from-[#3AA8BC] hover:to-[#2A9FB4] text-white shadow-md"}
+                        ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white"
+                        : "bg-gray-300 text-gray-700"}
                     >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      {isValidated ? t('validated') : isSelfReported ? t('awaiting_validation') : t('check_in')}
-                    </Button>
+                      {isValidated ? t('validated') : isSelfReported ? t('awaiting_validation') : t('not_checked_in')}
+                    </Badge>
                   </div>
                 );
               })}
             </div>
-            {checkInMessage && (
-              <Alert className="mt-6 bg-white/80 border-2 border-[#4FBACA]">
-                <AlertDescription className="text-[#443837]">{checkInMessage}</AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
       )}

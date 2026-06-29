@@ -3,6 +3,13 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
+  // Volunteer routes are deprecated; forward to intern equivalents.
+  if (request.nextUrl.pathname === '/volunteer' || request.nextUrl.pathname.startsWith('/volunteer/')) {
+    const internPath = request.nextUrl.pathname.replace(/^\/volunteer/, '/intern');
+    const redirectUrl = new URL(internPath + request.nextUrl.search, request.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+
   // Create a response object to modify
   let response = NextResponse.next({
     request,
@@ -37,5 +44,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/participant/:path*', '/volunteer/:path*'],
+  matcher: ['/admin/:path*', '/participant/:path*', '/volunteer/:path*', '/intern/:path*', '/local_leader/:path*'],
 };

@@ -40,7 +40,7 @@ interface AttendanceHistory {
   }[];
 }
 
-export default function AdminParticipantDetailPage({ params }: { params: { id: string } }) {
+export default function InternParticipantDetailPage({ params }: { params: { id: string } }) {
   const participantId = params.id;
   const [language, setLanguage] = useState<Language>('en');
   const [participant, setParticipant] = useState<Participant | null>(null);
@@ -48,7 +48,7 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
   const [participantLevels, setParticipantLevels] = useState<ParticipantLevelWithDetails[]>([]);
   const [allLevels, setAllLevels] = useState<Level[]>([]);
   const [allSkills, setAllSkills] = useState<Skill[]>([]);
-  const [adminId, setAdminId] = useState<string>('');
+  const [internId, setAdminId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [showAddLevel, setShowAddLevel] = useState(false);
@@ -207,7 +207,7 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
         .insert({
           participant_id: participantId,
           level_id: selectedLevelId,
-          validated_by_volunteer_id: adminId,
+          validated_by_volunteer_id: internId,
           achieved_date: new Date().toISOString().split('T')[0],
         });
 
@@ -286,7 +286,7 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
             skillsToAdd.map((skillId) => ({
               participant_id: participantId,
               skill_id: skillId,
-              validated_by_volunteer_id: adminId,
+              validated_by_volunteer_id: internId,
               achieved_date: new Date().toISOString().split('T')[0],
             }))
           );

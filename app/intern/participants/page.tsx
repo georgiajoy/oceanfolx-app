@@ -21,7 +21,7 @@ interface ParticipantWithSkill extends Participant {
   highestSkill?: string;
 }
 
-export default function VolunteerParticipantsPage() {
+export default function InternParticipantsPage() {
   const router = useRouter();
   const [language, setLanguage] = useState<Language>('en');
   const [participants, setParticipants] = useState<ParticipantWithSkill[]>([]);

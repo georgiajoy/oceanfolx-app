@@ -5,7 +5,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
-export type UserRole = 'admin' | 'volunteer' | 'participant';
+export type UserRole = 'admin' | 'intern' | 'participant' | 'local_leader';
 export type Language = 'en' | 'id';
 
 export interface UserProfile {
@@ -13,7 +13,50 @@ export interface UserProfile {
   role: UserRole;
   preferred_language: Language;
   full_name?: string | null;
+  preferred_name?: string | null;
+  birthday?: string | null;
+  allergies?: string | null;
+  bpjs_number?: string | null;
   phone: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  shoe_size?: string | null;
+  clothing_size?: string | null;
+  notes?: string | null;
+  profile_photo_url?: string | null;
+  age?: string | null;
+  village?: string | null;
+  number_of_children?: string | null;
+  respiratory_issues?: string | null;
+  diabetes?: string | null;
+  neurological_conditions?: string | null;
+  chronic_illnesses?: string | null;
+  head_injuries?: string | null;
+  hospitalizations?: string | null;
+  medications?: string | null;
+  medications_not_taking_during_program?: string | null;
+  medical_dietary_requirements?: string | null;
+  religious_personal_dietary_restrictions?: string | null;
+  swim_ability_calm?: 'none' | 'poor' | 'competent' | 'advanced' | null;
+  swim_ability_moving?: 'none' | 'poor' | 'competent' | 'advanced' | null;
+  surfing_experience?: 'none' | 'poor' | 'competent' | 'advanced' | null;
+  commitment_statement?: boolean | null;
+  risks_release_indemnity_agreement?: boolean | null;
+  media_release_agreement?: boolean | null;
+  hijab_photo_preference?: 'with_or_without' | 'only_with' | null;
+  signature?: string | null;
+  signature_date?: string | null;
+  code_of_conduct_url?: string | null;
+  safeguarding_policy_url?: string | null;
+  indemnity_agreement_url?: string | null;
+  created_at: string;
+}
+
+export interface LessonNote {
+  id: string;
+  session_id: string;
+  author_user_id: string;
+  content: string;
   created_at: string;
 }
 
@@ -67,7 +110,7 @@ export interface SessionParticipant {
   id: string;
   session_id: string;
   participant_id: string;
-  status: 'signed_up' | 'present' | 'absent' | 'self_reported';
+  status: 'signed_up' | 'present' | 'self_reported';
   signed_up_at: string;
   marked_at: string | null;
   validated_by_volunteer_id: string | null;
@@ -97,6 +140,7 @@ export interface Skill {
   description_en: string;
   description_id: string;
   order_number: number;
+  video_url?: string | null;
   created_at: string;
 }
 

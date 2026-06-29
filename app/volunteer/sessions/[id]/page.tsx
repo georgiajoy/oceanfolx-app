@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getCurrentUser, getUserProfile } from '@/lib/auth';
-import { supabase, Language, Session, Participant, Attendance } from '@/lib/supabase';
+import { supabase, Language, Session, Participant, Attendance, LessonNote } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
+import LessonNotesSection from '@/components/LessonNotesSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,11 +45,12 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
   const [session, setSession] = useState<Session | null>(null);
   const [signups, setSignups] = useState<SignupWithParticipant[]>([]);
   const [attendance, setAttendance] = useState<AttendanceWithParticipant[]>([]);
-  const [volunteerId, setVolunteerId] = useState<string>('');
+  const [volunteerId, setInternId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [allParticipants, setAllParticipants] = useState<ParticipantWithUser[]>([]);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>('');
   const [addingParticipant, setAddingParticipant] = useState(false);
+    const [lessonNotes, setLessonNotes] = useState<LessonNote[]>([]);
   const t = useTranslation(language);
 
   const loadData = useCallback(async () => {
@@ -59,11 +61,11 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
         const profile = await getUserProfile(user.id);
         if (profile) {
           setLanguage(profile.preferred_language);
-          setVolunteerId(user.id);
+          setInternId(user.id);
         }
       }
 
-      const [sessionResult, spResult, participantsResult] = await Promise.all([
+      const [sessionResult, spResult, participantsResult, lessonNotesResult] = await Promise.all([
         supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle(),
         supabase
           .from('session_participants')
@@ -74,17 +76,20 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
           .from('participants')
           .select('*, user:users(full_name)')
           .order('user(full_name)'),
+        supabase.from('lesson_notes').select('*').eq('session_id', sessionId).order('created_at', { ascending: false }),
       ]);
 
       if (sessionResult.error) throw sessionResult.error;
       if (spResult.error) throw spResult.error;
       if (participantsResult.error) throw participantsResult.error;
+        if (lessonNotesResult.error) throw lessonNotesResult.error;
 
       setSession(sessionResult.data);
       const spAll = spResult.data || [];
       setSignups((spAll as any[]).filter(s => s.status === 'signed_up'));
       setAttendance((spAll as any[]).filter(s => s.status !== 'signed_up'));
       setAllParticipants(participantsResult.data as any[]);
+        setLessonNotes(lessonNotesResult.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -117,20 +122,15 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
 
   async function markAbsent(participantId: string) {
     try {
-      await supabase.from('session_participants').upsert(
-        {
-          session_id: sessionId,
-          participant_id: participantId,
-          status: 'absent',
-          validated_by_volunteer_id: volunteerId,
-          marked_at: new Date().toISOString(),
-        },
-        { onConflict: 'session_id,participant_id' }
-      );
+      await supabase
+        .from('session_participants')
+        .delete()
+        .eq('session_id', sessionId)
+        .eq('participant_id', participantId);
 
       loadData();
     } catch (error) {
-      console.error('Error marking absent:', error);
+      console.error('Error removing participant:', error);
     }
   }
 
@@ -160,7 +160,6 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
     s => !attendance.find(a => a.participant_id === s.participant_id)
   );
   const confirmedAttendance = attendance.filter(a => a.status === 'present');
-  const markedAbsent = attendance.filter(a => a.status === 'absent');
 
   // Get participants not already in this session
   const enrolledParticipantIds = new Set([
@@ -288,15 +287,6 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
                       <CheckCircle className="h-4 w-4 mr-1" />
                       Confirm Attendance
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => markAbsent(att.participant_id)}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Absent
-                    </Button>
                   </div>
                 </div>
               ))}
@@ -336,15 +326,6 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
                       <CheckCircle className="h-4 w-4 mr-1" />
                       Confirm Attendance
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => markAbsent(signup.participant_id)}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Absent
-                    </Button>
                   </div>
                 </div>
               ))}
@@ -375,52 +356,6 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
                       <div className="text-xs text-gray-600">Attendance confirmed</div>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => markAbsent(att.participant_id)}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Mark Absent
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {markedAbsent.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-700">
-              <XCircle className="h-5 w-5" />
-              Marked Absent ({markedAbsent.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {markedAbsent.map((att) => (
-                <div
-                  key={att.id}
-                  className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <XCircle className="h-5 w-5 text-red-600" />
-                    <div>
-                      <div className="font-medium">{att.participant.user?.full_name || att.participant.full_name}</div>
-                      <div className="text-xs text-gray-600">Marked as absent</div>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => confirmAttendance(att.participant_id)}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Confirm Attendance
-                  </Button>
                 </div>
               ))}
             </div>
@@ -435,6 +370,13 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
           </CardContent>
         </Card>
       )}
+
+        <LessonNotesSection
+          sessionId={sessionId}
+          currentUserId={volunteerId}
+          notes={lessonNotes}
+          onNotesUpdated={loadData}
+        />
     </div>
   );
 }

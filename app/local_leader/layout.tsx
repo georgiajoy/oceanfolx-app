@@ -10,9 +10,9 @@ import { LanguageProvider, useLanguage } from '@/lib/language-context';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Users, Calendar, LayoutDashboard, LogOut, Package, Menu } from 'lucide-react';
+import { Users, Calendar, LayoutDashboard, LogOut, Menu } from 'lucide-react';
 
-function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
+function LocalLeaderLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +33,7 @@ function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
       }
 
       const userProfile = await getUserProfile(user.id);
-      const allowed = userProfile && (userProfile.role === 'intern' || userProfile.role === 'local_leader' || userProfile.role === 'admin');
+      const allowed = userProfile && (userProfile.role === 'local_leader' || userProfile.role === 'admin');
       if (!allowed) {
         router.push('/');
         return;
@@ -74,10 +74,9 @@ function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   const navLinks = [
-    { href: '/volunteer', icon: LayoutDashboard, label: t('dashboard') },
-    { href: '/volunteer/sessions', icon: Calendar, label: t('lessons') },
-    { href: '/volunteer/participants', icon: Users, label: t('participants') },
-    { href: '/volunteer/gear-assignments', icon: Package, label: t('gear') },
+    { href: '/local_leader', icon: LayoutDashboard, label: t('dashboard') },
+    { href: '/local_leader/sessions', icon: Calendar, label: t('lessons') },
+    { href: '/local_leader/participants', icon: Users, label: t('participants') },
   ];
 
   return (
@@ -95,7 +94,7 @@ function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
                 <SheetContent side="left" className="w-64 bg-gradient-to-b from-[#443837] to-[#5A4A47] text-white border-r-[#4FBACA]/20">
                   <SheetHeader>
                     <SheetTitle className="text-left bg-gradient-to-r from-[#4FBACA] to-[#6DD5ED] bg-clip-text text-transparent">
-                      OceanFolx Volunteer
+                      OceanFolx Local Leader
                     </SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col gap-2 mt-6">
@@ -161,10 +160,10 @@ function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function VolunteerLayout({ children }: { children: React.ReactNode }) {
+export default function LocalLeaderLayout({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
-      <VolunteerLayoutContent>{children}</VolunteerLayoutContent>
+      <LocalLeaderLayoutContent>{children}</LocalLeaderLayoutContent>
     </LanguageProvider>
   );
 }

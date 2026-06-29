@@ -52,8 +52,10 @@ export function getRoleRedirectPath(role: UserRole): string {
   switch (role) {
     case 'admin':
       return '/admin';
-    case 'volunteer':
-      return '/volunteer';
+    case 'intern':
+      return '/intern';
+    case 'local_leader':
+      return '/local_leader';
     case 'participant':
       return '/participant';
     default:

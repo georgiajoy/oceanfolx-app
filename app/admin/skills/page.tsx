@@ -45,6 +45,7 @@ export default function SkillsPage() {
     name_id: '',
     description_en: '',
     description_id: '',
+    video_url: '',
     order_number: 1,
   });
   const t = useTranslation(language);
@@ -130,6 +131,7 @@ export default function SkillsPage() {
         name_id: '',
         description_en: '',
         description_id: '',
+        video_url: '',
         order_number: 1,
       });
       setIsSkillDialogOpen(false);
@@ -207,6 +209,7 @@ export default function SkillsPage() {
           name_id: editingSkill.name_id,
           description_en: editingSkill.description_en,
           description_id: editingSkill.description_id,
+          video_url: editingSkill.video_url,
           order_number: editingSkill.order_number,
         })
         .eq('id', editingSkill.id);
@@ -468,6 +471,16 @@ export default function SkillsPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="skill_video_url">Video URL</Label>
+                    <Input
+                      id="skill_video_url"
+                      type="url"
+                      placeholder="https://"
+                      value={skillFormData.video_url}
+                      onChange={(e) => setSkillFormData({ ...skillFormData, video_url: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="skill_order_number">Order</Label>
                     <Input
                       id="skill_order_number"
@@ -509,6 +522,7 @@ export default function SkillsPage() {
                         <TableHead>Indonesian Name</TableHead>
                         <TableHead>English Description</TableHead>
                         <TableHead>Indonesian Description</TableHead>
+                        <TableHead>Video</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -530,6 +544,15 @@ export default function SkillsPage() {
                           <TableCell className="font-medium">{skill.name_id}</TableCell>
                           <TableCell className="text-sm text-gray-600">{skill.description_en}</TableCell>
                           <TableCell className="text-sm text-gray-600">{skill.description_id}</TableCell>
+                          <TableCell className="text-sm text-gray-600">
+                            {skill.video_url ? (
+                              <a href={skill.video_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                                Demo
+                              </a>
+                            ) : (
+                              <span className="text-gray-500">None</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">
                               <Button
@@ -710,6 +733,16 @@ export default function SkillsPage() {
                   id="edit-skill_description_id"
                   value={editingSkill.description_id}
                   onChange={(e) => setEditingSkill({ ...editingSkill, description_id: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-skill_video_url">Video URL</Label>
+                <Input
+                  id="edit-skill_video_url"
+                  type="url"
+                  placeholder="https://"
+                  value={editingSkill.video_url || ''}
+                  onChange={(e) => setEditingSkill({ ...editingSkill, video_url: e.target.value })}
                 />
               </div>
               <div className="space-y-2">

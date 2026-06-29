@@ -39,13 +39,13 @@ interface SignupWithParticipant extends LessonSignup {
   participant: ParticipantWithUser;
 }
 
-export default function AdminSessionAttendancePage({ params }: { params: { id: string } }) {
+export default function SessionCheckInPage({ params }: { params: { id: string } }) {
   const sessionId = params.id;
   const [language, setLanguage] = useState<Language>('en');
   const [session, setSession] = useState<Session | null>(null);
   const [signups, setSignups] = useState<SignupWithParticipant[]>([]);
   const [attendance, setAttendance] = useState<AttendanceWithParticipant[]>([]);
-  const [adminId, setAdminId] = useState<string>('');
+  const [internId, setInternId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [allParticipants, setAllParticipants] = useState<ParticipantWithUser[]>([]);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>('');
@@ -61,7 +61,7 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
         const profile = await getUserProfile(user.id);
         if (profile) {
           setLanguage(profile.preferred_language);
-          setAdminId(user.id);
+          setInternId(user.id);
         }
       }
 
@@ -108,7 +108,7 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
           session_id: sessionId,
           participant_id: participantId,
           status: 'present',
-          validated_by_volunteer_id: adminId,
+          validated_by_volunteer_id: internId,
           marked_at: new Date().toISOString(),
         },
         { onConflict: 'session_id,participant_id' }
@@ -122,7 +122,6 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
 
   async function markAbsent(participantId: string) {
     try {
-      // Remove from session (participant won't show up in attendance)
       await supabase
         .from('session_participants')
         .delete()
@@ -182,8 +181,8 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">Lesson Attendance</h2>
-        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#443837]/70">
+        <h2 className="text-3xl font-bold text-[#443837]">Lesson Attendance</h2>
+        <p className="mt-2 text-sm text-[#443837]/70">
           {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
@@ -202,7 +201,7 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex gap-2">
             <Select value={selectedParticipantId} onValueChange={setSelectedParticipantId}>
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Select a participant..." />
@@ -218,11 +217,10 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
             <Button
               onClick={addParticipantToSession}
               disabled={!selectedParticipantId || addingParticipant}
-              className="bg-[#4FBACA] hover:bg-[#4FBACA]/90 w-full sm:w-auto"
+              className="bg-[#4FBACA] hover:bg-[#4FBACA]/90"
             >
-              <UserPlus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add to Session</span>
-              <span className="sm:hidden ml-1">Add</span>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add to Session
             </Button>
           </div>
           {availableParticipants.length === 0 && (
@@ -375,7 +373,7 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
 
         <LessonNotesSection
           sessionId={sessionId}
-          currentUserId={adminId}
+          currentUserId={internId}
           notes={lessonNotes}
           onNotesUpdated={loadData}
         />
