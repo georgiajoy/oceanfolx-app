@@ -40,10 +40,12 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS safeguarding_policy_url text,
   ADD COLUMN IF NOT EXISTS indemnity_agreement_url text;
 
+-- Drop old role constraint before renaming volunteer -> intern, then add new constraint
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+
 -- Replace volunteer with intern in existing data and type
 UPDATE users SET role = 'intern' WHERE role = 'volunteer';
 
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','intern','participant','local_leader'));
 
 ALTER TABLE session_participants DROP CONSTRAINT IF EXISTS session_participants_status_check;
