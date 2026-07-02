@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getCurrentUser, getUserProfile, signOut } from '@/lib/auth';
+import { getCurrentUser, getUserAccessLevel, getUserProfile, signOut } from '@/lib/auth';
 import { UserProfile } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import { LanguageProvider, useLanguage } from '@/lib/language-context';
@@ -32,8 +32,14 @@ function ParticipantLayoutContent({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const accessLevel = await getUserAccessLevel(user.id);
+      if (accessLevel !== 'participant') {
+        router.push('/');
+        return;
+      }
+
       const userProfile = await getUserProfile(user.id);
-      if (!userProfile || userProfile.role !== 'participant') {
+      if (!userProfile) {
         router.push('/');
         return;
       }

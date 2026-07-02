@@ -5,7 +5,18 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
-export type UserRole = 'admin' | 'intern' | 'participant' | 'local_leader';
+export type UserRole =
+  | 'admin'
+  | 'intern'
+  | 'participant'
+  | 'local_leader'
+  | 'remote_foreign_staff'
+  | 'in_person_facilitator'
+  | 'non_program_foreign_staff'
+  | 'in_person_foreign_staff'
+  | 'remote_volunteer'
+  | 'volunteer';
+export type AccessLevel = 'participant' | 'employee' | 'admin';
 export type Language = 'en' | 'id';
 
 export interface UserProfile {

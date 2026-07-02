@@ -5,9 +5,91 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { normalizePhoneToDigits, phoneToEmail } from '@/lib/phone';
 
+type LegacyUsersRole = 'admin' | 'intern' | 'participant' | 'local_leader';
+type BusinessRole =
+  | 'participant'
+  | 'remote_foreign_staff'
+  | 'in_person_facilitator'
+  | 'non_program_foreign_staff'
+  | 'in_person_foreign_staff'
+  | 'remote_volunteer'
+  | 'local_leader'
+  | 'intern'
+  | 'admin';
+
+function normalizeBusinessRole(role: UserRole): BusinessRole {
+  if (role === 'volunteer') return 'remote_volunteer';
+  return role as BusinessRole;
+}
+
+function mapBusinessRoleToLegacyUsersRole(role: BusinessRole): LegacyUsersRole {
+  if (role === 'participant') return 'participant';
+  if (role === 'admin' || role === 'intern') return role;
+  return 'local_leader';
+}
+
+function mapRoleToAccessLevel(role: UserRole | null | undefined): 'participant' | 'employee' | 'admin' | null {
+  if (!role) return null;
+  if (role === 'participant') return 'participant';
+  if (role === 'admin' || role === 'intern') return 'admin';
+  if (
+    role === 'local_leader' ||
+    role === 'remote_foreign_staff' ||
+    role === 'in_person_facilitator' ||
+    role === 'non_program_foreign_staff' ||
+    role === 'in_person_foreign_staff' ||
+    role === 'remote_volunteer' ||
+    role === 'volunteer'
+  ) {
+    return 'employee';
+  }
+  return null;
+}
+
+async function getCallerRoleAndAccessLevel(supabase: ReturnType<typeof createServerClientSupabase>, userId: string) {
+  let role: UserRole | null = null;
+
+  // Prefer new role architecture when available
+  try {
+    const { data: userRoleData, error: userRoleError } = await supabase
+      .from('user_roles')
+      .select('role_id, is_active')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!userRoleError && userRoleData?.role_id) {
+      role = userRoleData.role_id as UserRole;
+      return { role, accessLevel: mapRoleToAccessLevel(role) };
+    }
+  } catch {
+    // Ignore and use legacy fallback below.
+  }
+
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (userError || !userData) {
+    throw new Error('User profile not found');
+  }
+
+  role = userData.role as UserRole;
+  return { role, accessLevel: mapRoleToAccessLevel(role) };
+}
+
 function parseMissingUsersColumn(error: any): string | null {
   const message = error?.message || '';
   const match = message.match(/Could not find the '([^']+)' column of 'users'/i);
+  return match?.[1] || null;
+}
+
+function parseMissingTableColumn(error: any, tableName: string): string | null {
+  const message = error?.message || '';
+  const regex = new RegExp(`Could not find the '([^']+)' column of '${tableName}'`, 'i');
+  const match = message.match(regex);
   return match?.[1] || null;
 }
 
@@ -67,17 +149,135 @@ async function updateUserWithCompatibleColumns(
   return { error: new Error('Exceeded compatibility retries for users update') };
 }
 
+async function upsertUserRoleWithCompatibility(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string,
+  roleId: BusinessRole
+) {
+  const payload: Record<string, any> = {
+    user_id: userId,
+    role_id: roleId,
+    is_active: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  let attempts = 0;
+  while (attempts < 10) {
+    attempts += 1;
+    const { error } = await supabase.from('user_roles').upsert(payload, { onConflict: 'user_id' });
+
+    if (!error) {
+      return { error: null };
+    }
+
+    const missingColumn = parseMissingTableColumn(error, 'user_roles');
+    if (!missingColumn || !(missingColumn in payload)) {
+      return { error };
+    }
+
+    delete payload[missingColumn];
+  }
+
+  return { error: new Error('Exceeded compatibility retries for user_roles upsert') };
+}
+
+async function upsertUserProfileWithCompatibility(
+  supabase: ReturnType<typeof createAdminClient>,
+  payload: Record<string, any>
+) {
+  const workingPayload = { ...payload };
+  let attempts = 0;
+
+  while (attempts < 40) {
+    attempts += 1;
+    const { error } = await supabase.from('user_profiles').upsert(workingPayload, { onConflict: 'user_id' });
+
+    if (!error) {
+      return { error: null };
+    }
+
+    const missingColumn = parseMissingTableColumn(error, 'user_profiles');
+    if (!missingColumn || !(missingColumn in workingPayload)) {
+      return { error };
+    }
+
+    delete workingPayload[missingColumn];
+  }
+
+  return { error: new Error('Exceeded compatibility retries for user_profiles upsert') };
+}
+
+async function upsertCoreFormSubmissionsWithCompatibility(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string,
+  commitmentStatement?: boolean,
+  risksReleaseIndemnityAgreement?: boolean,
+  mediaReleaseAgreement?: boolean,
+  hijabPhotoPreference?: 'with_or_without' | 'only_with',
+  signatureDate?: string
+) {
+  const signedAt = signatureDate || null;
+  const baseRows = [
+    { user_id: userId, form_id: 'commitment_statement', accepted: Boolean(commitmentStatement), signed_at: signedAt },
+    { user_id: userId, form_id: 'indemnity_agreement', accepted: Boolean(risksReleaseIndemnityAgreement), signed_at: signedAt },
+    { user_id: userId, form_id: 'media_consent', accepted: Boolean(mediaReleaseAgreement), signed_at: signedAt },
+    { user_id: userId, form_id: 'hijab_photo_preference', accepted: Boolean(hijabPhotoPreference), signed_at: signedAt },
+  ];
+
+  const rows = baseRows.map((row) => ({ ...row }));
+  let attempts = 0;
+
+  while (attempts < 15) {
+    attempts += 1;
+    const { error } = await supabase
+      .from('user_form_submissions')
+      .upsert(rows as any, { onConflict: 'user_id,form_id' });
+
+    if (!error) {
+      return { error: null };
+    }
+
+    const missingColumn = parseMissingTableColumn(error, 'user_form_submissions');
+    if (!missingColumn) {
+      return { error };
+    }
+
+    let removed = false;
+    rows.forEach((row) => {
+      if (missingColumn in row) {
+        delete (row as Record<string, any>)[missingColumn];
+        removed = true;
+      }
+    });
+
+    if (!removed) {
+      return { error };
+    }
+  }
+
+  return { error: new Error('Exceeded compatibility retries for user_form_submissions upsert') };
+}
+
 /**
  * Get hardcoded policy URLs based on user role
  */
 function getPolicyUrlsForRole(role: UserRole) {
-  if (role === 'local_leader') {
+  const businessRole = normalizeBusinessRole(role);
+
+  if (
+    businessRole === 'local_leader' ||
+    businessRole === 'remote_foreign_staff' ||
+    businessRole === 'in_person_facilitator' ||
+    businessRole === 'non_program_foreign_staff' ||
+    businessRole === 'in_person_foreign_staff' ||
+    businessRole === 'remote_volunteer'
+  ) {
     return {
       code_of_conduct_url: 'https://docs.google.com/document/d/1yoosDEv4FWcuuPkQAyGOjmuv35mJpVAL',
       safeguarding_policy_url: 'https://docs.google.com/document/d/1bJEFsidVXBV7r-69Z9MtCkwCITKsMLEq',
       indemnity_agreement_url: 'https://docs.google.com/document/d/14bXajnXp_FwSqob-v81_sdGbylUYh6r9',
     };
-  } else if (role === 'admin' || role === 'intern') {
+  } else if (businessRole === 'admin' || businessRole === 'intern') {
     return {
       code_of_conduct_url: 'https://docs.google.com/document/d/131Px2JzGfkSwPalBCs8L-',
       safeguarding_policy_url: 'https://docs.google.com/document/d/1bGdLmOJsBYk2OKpYUrMYIheRooHCKyeO',
@@ -105,18 +305,9 @@ async function assertCallerIsAdmin(): Promise<string> {
     throw new Error('Not authenticated');
   }
   
-  // Check if user has admin role in public.users table
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  
-  if (userError || !userData) {
-    throw new Error('User profile not found');
-  }
-  
-  if (userData.role !== 'admin') {
+  const { accessLevel } = await getCallerRoleAndAccessLevel(supabase, user.id);
+
+  if (accessLevel !== 'admin') {
     throw new Error('Not authorized. Admin access required.');
   }
   
@@ -137,22 +328,17 @@ async function assertCallerIsAdminOrIntern(): Promise<{ userId: string; role: Us
     throw new Error('Not authenticated');
   }
   
-  // Check if user has admin or intern role in public.users table
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  
-  if (userError || !userData) {
+  const { role, accessLevel } = await getCallerRoleAndAccessLevel(supabase, user.id);
+
+  if (!role) {
     throw new Error('User profile not found');
   }
-  
-  if (userData.role !== 'admin' && userData.role !== 'intern') {
-    throw new Error('Not authorized. Admin or Intern access required.');
+
+  if (accessLevel !== 'admin') {
+    throw new Error('Not authorized. Admin-level access required.');
   }
   
-  return { userId: user.id, role: userData.role as UserRole };
+  return { userId: user.id, role };
 }
 
 export async function createUserAction(
@@ -200,12 +386,10 @@ export async function createUserAction(
   signatureDate?: string
 ) {
   // Verify caller is admin or intern
-  const { role: callerRole } = await assertCallerIsAdminOrIntern();
-  
-  // Interns can only create participants
-  if (callerRole === 'intern' && role !== 'participant') {
-    throw new Error('Interns can only create participant users');
-  }
+  await assertCallerIsAdminOrIntern();
+
+  const businessRole = normalizeBusinessRole(role);
+  const legacyUsersRole = mapBusinessRoleToLegacyUsersRole(businessRole);
   
   // Get hardcoded policy URLs based on role
   const { 
@@ -235,7 +419,7 @@ export async function createUserAction(
     // and gracefully drop fields if remote schema cache is missing newer columns.
     const userInsertPayload = {
       id: authData.user.id,
-      role,
+      role: legacyUsersRole,
       preferred_language: preferredLanguage,
       phone: normalizedPhone,
       full_name: fullName,
@@ -266,8 +450,60 @@ export async function createUserAction(
       throw userError;
     }
 
+    const { error: userRoleError } = await upsertUserRoleWithCompatibility(supabase, authData.user.id, businessRole);
+    if (userRoleError) throw userRoleError;
+
+    const { error: userProfileError } = await upsertUserProfileWithCompatibility(supabase, {
+      user_id: authData.user.id,
+      preferred_name: preferredName || null,
+      birthday: birthday || null,
+      number_of_children: numberOfChildren || null,
+      occupation: null,
+      bpjs_number: bpjsNumber || null,
+      village: village || null,
+      emergency_contact_name: emergencyContactName || null,
+      emergency_contact_phone: emergencyContactPhone || null,
+      allergies: allergies || null,
+      respiratory_issues: respiratoryIssues || null,
+      diabetes: diabetes || null,
+      neurological_conditions: neurologicalConditions || null,
+      chronic_illnesses: chronicIllnesses || null,
+      head_injuries: headInjuries || null,
+      hospitalizations: hospitalizations || null,
+      medications: medications || null,
+      medications_not_taking_during_program: medicationsNotTakingDuringProgram || null,
+      medical_dietary_requirements: medicalDietaryRequirements || null,
+      religious_personal_dietary_requirements: religiousPersonalDietaryRestrictions || null,
+      swim_ability_calm: swimAbilityCalm || null,
+      swim_ability_moving: swimAbilityMoving || null,
+      surfing_experience: surfingExperience || null,
+      shoe_size: shoeSize || null,
+      clothing_size: clothingSize || null,
+      commitment_statement: commitmentStatement || false,
+      indemnity_agreement: risksReleaseIndemnityAgreement || false,
+      media_consent: mediaReleaseAgreement || false,
+      hijab_photo_preference: hijabPhotoPreference || null,
+      signature: signature || null,
+      signature_date: signatureDate || null,
+      profile_photo_url: profilePhotoUrl || null,
+      notes: notes || null,
+      updated_at: new Date().toISOString(),
+    });
+    if (userProfileError) throw userProfileError;
+
+    const { error: userFormsError } = await upsertCoreFormSubmissionsWithCompatibility(
+      supabase,
+      authData.user.id,
+      commitmentStatement,
+      risksReleaseIndemnityAgreement,
+      mediaReleaseAgreement,
+      hijabPhotoPreference,
+      signatureDate
+    );
+    if (userFormsError) throw userFormsError;
+
     // Create participant record if role is participant
-    if (role === 'participant') {
+    if (businessRole === 'participant') {
       const { error: participantError } = await supabase.from('participants').insert({
         user_id: authData.user.id,
         emergency_contact_name: emergencyContactName || null,
@@ -361,10 +597,10 @@ export async function updateUserAction(
   signature?: string,
   signatureDate?: string
 ) {
-  const { role: callerRole } = await assertCallerIsAdminOrIntern();
-  if (callerRole === 'intern' && role !== 'participant') {
-    throw new Error('Interns can only manage participant users');
-  }
+  await assertCallerIsAdminOrIntern();
+
+  const businessRole = normalizeBusinessRole(role);
+  const legacyUsersRole = mapBusinessRoleToLegacyUsersRole(businessRole);
 
   // Get hardcoded policy URLs based on role
   const { 
@@ -378,7 +614,7 @@ export async function updateUserAction(
 
   try {
     const userUpdatePayload = {
-        role,
+      role: legacyUsersRole,
         preferred_language: preferredLanguage,
         phone: normalizedPhone,
         full_name: fullName,
@@ -401,7 +637,59 @@ export async function updateUserAction(
 
     if (updateError) throw updateError;
 
-    if (role === 'participant') {
+    const { error: userRoleError } = await upsertUserRoleWithCompatibility(supabase, userId, businessRole);
+    if (userRoleError) throw userRoleError;
+
+    const { error: userProfileError } = await upsertUserProfileWithCompatibility(supabase, {
+      user_id: userId,
+      preferred_name: preferredName || null,
+      birthday: birthday || null,
+      number_of_children: numberOfChildren || null,
+      occupation: null,
+      bpjs_number: bpjsNumber || null,
+      village: village || null,
+      emergency_contact_name: emergencyContactName || null,
+      emergency_contact_phone: emergencyContactPhone || null,
+      allergies: allergies || null,
+      respiratory_issues: respiratoryIssues || null,
+      diabetes: diabetes || null,
+      neurological_conditions: neurologicalConditions || null,
+      chronic_illnesses: chronicIllnesses || null,
+      head_injuries: headInjuries || null,
+      hospitalizations: hospitalizations || null,
+      medications: medications || null,
+      medications_not_taking_during_program: medicationsNotTakingDuringProgram || null,
+      medical_dietary_requirements: medicalDietaryRequirements || null,
+      religious_personal_dietary_requirements: religiousPersonalDietaryRestrictions || null,
+      swim_ability_calm: swimAbilityCalm || null,
+      swim_ability_moving: swimAbilityMoving || null,
+      surfing_experience: surfingExperience || null,
+      shoe_size: shoeSize || null,
+      clothing_size: clothingSize || null,
+      commitment_statement: commitmentStatement || false,
+      indemnity_agreement: risksReleaseIndemnityAgreement || false,
+      media_consent: mediaReleaseAgreement || false,
+      hijab_photo_preference: hijabPhotoPreference || null,
+      signature: signature || null,
+      signature_date: signatureDate || null,
+      profile_photo_url: profilePhotoUrl || null,
+      notes: notes || null,
+      updated_at: new Date().toISOString(),
+    });
+    if (userProfileError) throw userProfileError;
+
+    const { error: userFormsError } = await upsertCoreFormSubmissionsWithCompatibility(
+      supabase,
+      userId,
+      commitmentStatement,
+      risksReleaseIndemnityAgreement,
+      mediaReleaseAgreement,
+      hijabPhotoPreference,
+      signatureDate
+    );
+    if (userFormsError) throw userFormsError;
+
+    if (businessRole === 'participant') {
       const { data: participantData, error: fetchParticipantError } = await supabase
         .from('participants')
         .select('id')
@@ -474,7 +762,7 @@ export async function updateUserAction(
  */
 export async function deleteUserAction(userId: string) {
   // Verify caller is admin or intern and get their ID and role
-  const { userId: callerId, role: callerRole } = await assertCallerIsAdminOrIntern();
+  const { userId: callerId } = await assertCallerIsAdminOrIntern();
   
   // Prevent deleting own account
   if (callerId === userId) {
@@ -482,22 +770,6 @@ export async function deleteUserAction(userId: string) {
   }
   
   const supabase = createAdminClient();
-  
-  // If caller is intern, verify they are only deleting a participant
-  if (callerRole === 'intern') {
-    const { data: targetUser, error: fetchError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    if (fetchError) throw fetchError;
-    if (!targetUser) throw new Error('User not found');
-    
-    if (targetUser.role !== 'participant') {
-      throw new Error('Volunteers can only delete participant users');
-    }
-  }
   
   try {
     // Delete auth user (this will cascade to users table via foreign key)
@@ -510,4 +782,133 @@ export async function deleteUserAction(userId: string) {
     console.error('Error deleting user:', error);
     throw new Error(error.message || 'Failed to delete user');
   }
+}
+
+export interface UserFormSubmissionInput {
+  form_id: string;
+  accepted: boolean;
+  signed_at?: string | null;
+}
+
+export interface UserFileUploadInput {
+  file_id: string;
+  file_url: string;
+  notes?: string | null;
+}
+
+export async function saveUserFormSubmissionsAction(userId: string, submissions: UserFormSubmissionInput[]) {
+  await assertCallerIsAdminOrIntern();
+
+  if (!userId) {
+    throw new Error('User ID is required');
+  }
+
+  const supabase = createAdminClient();
+
+  const rows = submissions.map((submission) => ({
+    user_id: userId,
+    form_id: submission.form_id,
+    accepted: submission.accepted,
+    signed_at: submission.signed_at || null,
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase
+    .from('user_form_submissions')
+    .upsert(rows, { onConflict: 'user_id,form_id' });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to save form submissions');
+  }
+
+  return { success: true };
+}
+
+export async function saveUserFileUploadsAction(userId: string, uploads: UserFileUploadInput[]) {
+  await assertCallerIsAdminOrIntern();
+
+  if (!userId) {
+    throw new Error('User ID is required');
+  }
+
+  const supabase = createAdminClient();
+
+  const fileIds = uploads.map((upload) => upload.file_id);
+  if (fileIds.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('user_file_uploads')
+      .delete()
+      .eq('user_id', userId)
+      .in('file_id', fileIds);
+
+    if (deleteError) {
+      throw new Error(deleteError.message || 'Failed to clear previous file records');
+    }
+  }
+
+  const validUploads = uploads
+    .filter((upload) => upload.file_url && upload.file_url.trim().length > 0)
+    .map((upload) => ({
+      user_id: userId,
+      file_id: upload.file_id,
+      file_url: upload.file_url.trim(),
+      notes: upload.notes || null,
+    }));
+
+  if (validUploads.length === 0) {
+    return { success: true };
+  }
+
+  const { error } = await supabase
+    .from('user_file_uploads')
+    .insert(validUploads);
+
+  if (error) {
+    throw new Error(error.message || 'Failed to save file uploads');
+  }
+
+  return { success: true };
+}
+
+export async function updateUserProfilePhotoAction(userId: string, profilePhotoUrl: string) {
+  await assertCallerIsAdminOrIntern();
+
+  if (!userId) {
+    throw new Error('User ID is required');
+  }
+
+  const supabase = createAdminClient();
+
+  const { error: userUpdateError } = await updateUserWithCompatibleColumns(supabase, userId, {
+    profile_photo_url: profilePhotoUrl,
+  });
+
+  if (userUpdateError) {
+    throw new Error(userUpdateError.message || 'Failed to update user profile photo');
+  }
+
+  const { error: profileError } = await upsertUserProfileWithCompatibility(supabase, {
+    user_id: userId,
+    profile_photo_url: profilePhotoUrl,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (profileError) {
+    throw new Error(profileError.message || 'Failed to update user profile photo metadata');
+  }
+
+  const { data: participantData, error: participantError } = await supabase
+    .from('participants')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!participantError && participantData?.id) {
+    await supabase
+      .from('participants')
+      .update({ profile_photo_url: profilePhotoUrl })
+      .eq('id', participantData.id);
+  }
+
+  return { success: true };
 }

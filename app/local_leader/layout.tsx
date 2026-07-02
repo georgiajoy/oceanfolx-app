@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getCurrentUser, getUserProfile, signOut } from '@/lib/auth';
+import { getCurrentUser, getUserAccessLevel, getUserProfile, signOut } from '@/lib/auth';
 import { UserProfile } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import { LanguageProvider, useLanguage } from '@/lib/language-context';
@@ -32,9 +32,14 @@ function LocalLeaderLayoutContent({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const accessLevel = await getUserAccessLevel(user.id);
+      if (accessLevel !== 'employee' && accessLevel !== 'admin') {
+        router.push('/');
+        return;
+      }
+
       const userProfile = await getUserProfile(user.id);
-      const allowed = userProfile && (userProfile.role === 'local_leader' || userProfile.role === 'admin');
-      if (!allowed) {
+      if (!userProfile) {
         router.push('/');
         return;
       }
