@@ -4,6 +4,9 @@
 
 BEGIN;
 
+DROP POLICY IF EXISTS "Employee-level can delete session_participants" ON session_participants;
+DROP POLICY IF EXISTS "Employee-level can read participant_progress" ON participant_progress;
+
 CREATE POLICY "Employee-level can delete session_participants"
   ON session_participants FOR DELETE TO authenticated
   USING (is_employee_level(auth.uid()));
