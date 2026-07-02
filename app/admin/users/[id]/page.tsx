@@ -14,8 +14,9 @@ import { supabase, UserProfile, UserRole } from '@/lib/supabase';
 import { saveUserFileUploadsAction, saveUserFormSubmissionsAction, updateUserAction } from '../actions';
 import {
   BusinessRole,
-  fetchRequiredFiles,
-  fetchRequiredForms,
+  getFormDocumentUrl,
+  getRequiredFilesForRole,
+  getRequiredFormsForRole,
   getRoleLabel,
   normalizeBusinessRole,
   ROLE_OPTIONS,
@@ -114,7 +115,8 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const loadRoleRequirements = useCallback(async (role: BusinessRole) => {
-    const [forms, files] = await Promise.all([fetchRequiredForms(role), fetchRequiredFiles(role)]);
+    const forms = getRequiredFormsForRole(role);
+    const files = getRequiredFilesForRole(role);
 
     setRequiredForms(forms);
     setRequiredFiles(files);
@@ -589,7 +591,16 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
                 />
                 <div>
                   <Label htmlFor={`required-form-${form.id}`}>{form.label}</Label>
-                  <p className="text-xs text-gray-500">Category: {form.category.replaceAll('_', ' ')}</p>
+                  {getFormDocumentUrl(form.id) && (
+                    <a
+                      href={getFormDocumentUrl(form.id)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-xs text-blue-600 hover:underline mt-1"
+                    >
+                      View Document
+                    </a>
+                  )}
                 </div>
               </div>
             ))

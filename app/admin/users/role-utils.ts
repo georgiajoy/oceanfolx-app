@@ -179,8 +179,28 @@ export function getRoleLabel(role: string): string {
   return role.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+export function getFormDocumentUrl(formId: string): string | null {
+  if (formId === 'code_of_conduct') {
+    return 'https://docs.google.com/document/d/131Px2JzGfkSwPalBCs8L-B2lkgGwlnwD/edit';
+  }
+
+  if (formId === 'indemnity_agreement') {
+    return 'https://docs.google.com/document/d/14bXajnXp_FwSqob-v81_sdGbylUYh6r9/edit';
+  }
+
+  return null;
+}
+
 export function isParticipantRole(role: string): boolean {
   return role === 'participant';
+}
+
+export function getRequiredFormsForRole(role: BusinessRole): RequiredForm[] {
+  return FALLBACK_ROLE_FORMS[role] || [];
+}
+
+export function getRequiredFilesForRole(role: BusinessRole): RequiredFile[] {
+  return FALLBACK_ROLE_FILES[role] || [];
 }
 
 export async function fetchRequiredForms(role: BusinessRole): Promise<RequiredForm[]> {

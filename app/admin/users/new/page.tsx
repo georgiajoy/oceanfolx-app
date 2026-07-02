@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createUserAction, saveUserFormSubmissionsAction } from '../actions';
 import { UserRole } from '@/lib/supabase';
-import { BusinessRole, fetchRequiredForms, isParticipantRole, ROLE_OPTIONS, RequiredForm } from '../role-utils';
+import { BusinessRole, getFormDocumentUrl, getRequiredFormsForRole, isParticipantRole, ROLE_OPTIONS, RequiredForm } from '../role-utils';
 
 interface CreateUserFormState {
   phone: string;
@@ -99,7 +99,7 @@ export default function AdminCreateUserPage() {
   async function loadRoleRequirements(role: BusinessRole) {
     try {
       setLoadingRequirements(true);
-      const forms = await fetchRequiredForms(role);
+      const forms = getRequiredFormsForRole(role);
       setRequiredForms(forms);
       setFormAcceptances((prev) => {
         const next: Record<string, boolean> = {};
@@ -346,7 +346,16 @@ export default function AdminCreateUserPage() {
                     <Label htmlFor={`form-${form.id}`} className="font-medium">
                       {form.label}
                     </Label>
-                    <p className="text-xs text-gray-500">Category: {form.category.replaceAll('_', ' ')}</p>
+                    {getFormDocumentUrl(form.id) && (
+                      <a
+                        href={getFormDocumentUrl(form.id)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        View Document
+                      </a>
+                    )}
                   </div>
                 </div>
               ))
