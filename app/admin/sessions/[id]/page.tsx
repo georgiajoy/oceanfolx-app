@@ -5,6 +5,7 @@ import { getCurrentUser, getUserProfile } from '@/lib/auth';
 import { supabase, Language, Session, Participant, Attendance, LessonNote } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import LessonNotesSection from '@/components/LessonNotesSection';
+import { StaffAttendanceSection, StaffAttendanceWithUser } from '@/components/StaffAttendanceSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +61,7 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
   const [loadError, setLoadError] = useState('');
   const [signups, setSignups] = useState<SignupWithParticipant[]>([]);
   const [attendance, setAttendance] = useState<AttendanceWithParticipant[]>([]);
+  const [staffAttendance, setStaffAttendance] = useState<StaffAttendanceWithUser[]>([]);
   const [adminId, setAdminId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [allParticipants, setAllParticipants] = useState<ParticipantWithUser[]>([]);
@@ -126,6 +128,15 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
       setAttendance(spAll.filter((s) => s.status !== 'signed_up'));
       setAllParticipants(participantsResult.data as any[]);
       setLessonNotes(lessonNotesResult.data || []);
+
+      const { data: staffAttendanceData, error: staffAttendanceError } = await supabase
+        .from('session_staff_attendance')
+        .select('*, user:users(full_name)')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false });
+
+      if (staffAttendanceError) throw staffAttendanceError;
+      setStaffAttendance((staffAttendanceData || []) as StaffAttendanceWithUser[]);
     } catch (error: any) {
       console.error('Error loading data:', error);
       setLoadError(error?.message || 'Failed to load lesson details');
@@ -425,6 +436,13 @@ export default function AdminSessionAttendancePage({ params }: { params: { id: s
           </CardContent>
         </Card>
       )}
+
+      <StaffAttendanceSection
+        sessionId={sessionId}
+        currentUserId={adminId}
+        staffAttendance={staffAttendance}
+        onUpdated={loadData}
+      />
 
         <LessonNotesSection
           sessionId={sessionId}

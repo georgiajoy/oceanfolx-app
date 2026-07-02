@@ -130,6 +130,16 @@ export interface SessionParticipant {
   updated_at: string;
 }
 
+export interface SessionStaffAttendance {
+  id: string;
+  session_id: string;
+  user_id: string;
+  status: 'signed_up' | 'present';
+  signed_up_at: string;
+  marked_at: string | null;
+  created_at: string;
+}
+
 // Backward compatibility alias
 export type Attendance = SessionParticipant;
 

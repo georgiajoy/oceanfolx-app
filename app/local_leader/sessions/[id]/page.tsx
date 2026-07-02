@@ -6,6 +6,7 @@ import { getCurrentUser, getUserProfile } from '@/lib/auth';
 import { supabase, Language, Participant, LessonNote } from '@/lib/supabase';
 import { useTranslation } from '@/lib/i18n';
 import LessonNotesSection from '@/components/LessonNotesSection';
+import { StaffAttendanceSection, StaffAttendanceWithUser } from '@/components/StaffAttendanceSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,6 +40,7 @@ export default function LocalLeaderSessionDetailPage() {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [participants, setParticipants] = useState<ParticipantWithStatus[]>([]);
   const [allParticipants, setAllParticipants] = useState<ParticipantWithStatus[]>([]);
+  const [staffAttendance, setStaffAttendance] = useState<StaffAttendanceWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
@@ -121,6 +123,15 @@ export default function LocalLeaderSessionDetailPage() {
 
         if (lessonNotesError) throw lessonNotesError;
         setLessonNotes(lessonNotesData || []);
+
+        const { data: staffAttendanceData, error: staffAttendanceError } = await supabase
+          .from('session_staff_attendance')
+          .select('*, user:users(full_name)')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: false });
+
+        if (staffAttendanceError) throw staffAttendanceError;
+        setStaffAttendance((staffAttendanceData || []) as StaffAttendanceWithUser[]);
     } catch (error) {
       console.error('Error loading data:', error);
       setError('Failed to load session data');
@@ -405,6 +416,13 @@ export default function LocalLeaderSessionDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <StaffAttendanceSection
+        sessionId={sessionId}
+        currentUserId={currentUserId}
+        staffAttendance={staffAttendance}
+        onUpdated={loadData}
+      />
 
         <LessonNotesSection
           sessionId={sessionId}

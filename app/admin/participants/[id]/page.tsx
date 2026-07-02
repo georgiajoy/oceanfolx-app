@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Award, User, Plus, X, Calendar, Edit, Save, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { Award, User, Plus, X, Calendar, Edit, Save, ChevronLeft, ChevronRight, CheckCircle, PlayCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -1058,16 +1058,19 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
-                          {skill.video_url ? (
-                            <a
-                              href={skill.video_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-sm text-blue-600 hover:underline"
-                            >
-                              Video demo
-                            </a>
-                          ) : null}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!skill.video_url}
+                            onClick={() => {
+                              if (skill.video_url) {
+                                window.open(skill.video_url, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                          >
+                            <PlayCircle className="h-4 w-4 mr-1" />
+                            Video
+                          </Button>
                           <Button
                             size="sm"
                             variant={assigned ? 'outline' : 'secondary'}
