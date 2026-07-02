@@ -333,32 +333,37 @@ export default function AdminCreateUserPage() {
             ) : requiredForms.length === 0 ? (
               <p className="text-sm text-gray-500">No forms required for this role.</p>
             ) : (
-              requiredForms.map((form) => (
-                <div key={form.id} className="flex items-start space-x-3 rounded-md border p-3">
-                  <Checkbox
-                    id={`form-${form.id}`}
-                    checked={Boolean(formAcceptances[form.id])}
-                    onCheckedChange={(checked) => {
-                      setFormAcceptances((prev) => ({ ...prev, [form.id]: Boolean(checked) }));
-                    }}
-                  />
-                  <div className="space-y-1">
-                    <Label htmlFor={`form-${form.id}`} className="font-medium">
-                      {form.label}
-                    </Label>
-                    {getFormDocumentUrl(form.id) && (
-                      <a
-                        href={getFormDocumentUrl(form.id)!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        View Document
-                      </a>
-                    )}
+              requiredForms.map((form) => {
+                const formUrl = getFormDocumentUrl(form.id);
+
+                return (
+                  <div key={form.id} className="flex items-start space-x-3 rounded-md border p-3">
+                    <Checkbox
+                      id={`form-${form.id}`}
+                      checked={Boolean(formAcceptances[form.id])}
+                      onCheckedChange={(checked) => {
+                        setFormAcceptances((prev) => ({ ...prev, [form.id]: Boolean(checked) }));
+                      }}
+                    />
+                    <div>
+                      {formUrl ? (
+                        <a
+                          href={formUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-blue-600 hover:underline"
+                        >
+                          {form.label}
+                        </a>
+                      ) : (
+                        <Label htmlFor={`form-${form.id}`} className="font-medium">
+                          {form.label}
+                        </Label>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
 
             {requiredForms.some((form) => form.id === 'hijab_photo_preference') && (

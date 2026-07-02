@@ -580,30 +580,35 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
           {requiredForms.length === 0 ? (
             <p className="text-sm text-gray-500">No forms required for this role.</p>
           ) : (
-            requiredForms.map((form) => (
-              <div key={form.id} className="flex items-start space-x-3 rounded-md border p-3">
-                <Checkbox
-                  id={`required-form-${form.id}`}
-                  checked={Boolean(formAcceptances[form.id])}
-                  onCheckedChange={(checked) => {
-                    setFormAcceptances((prev) => ({ ...prev, [form.id]: Boolean(checked) }));
-                  }}
-                />
-                <div>
-                  <Label htmlFor={`required-form-${form.id}`}>{form.label}</Label>
-                  {getFormDocumentUrl(form.id) && (
-                    <a
-                      href={getFormDocumentUrl(form.id)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-xs text-blue-600 hover:underline mt-1"
-                    >
-                      View Document
-                    </a>
-                  )}
+            requiredForms.map((form) => {
+              const formUrl = getFormDocumentUrl(form.id);
+
+              return (
+                <div key={form.id} className="flex items-start space-x-3 rounded-md border p-3">
+                  <Checkbox
+                    id={`required-form-${form.id}`}
+                    checked={Boolean(formAcceptances[form.id])}
+                    onCheckedChange={(checked) => {
+                      setFormAcceptances((prev) => ({ ...prev, [form.id]: Boolean(checked) }));
+                    }}
+                  />
+                  <div>
+                    {formUrl ? (
+                      <a
+                        href={formUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 hover:underline"
+                      >
+                        {form.label}
+                      </a>
+                    ) : (
+                      <Label htmlFor={`required-form-${form.id}`}>{form.label}</Label>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
