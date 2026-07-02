@@ -426,7 +426,7 @@ SELECT
   COALESCE(p.signature, u.signature),
   COALESCE(p.signature_date, u.signature_date),
   COALESCE(p.profile_photo_url, u.profile_photo_url),
-  COALESCE(p.notes, u.notes)
+  NULL
 FROM users u
 LEFT JOIN participants p ON p.user_id = u.id
 ON CONFLICT (user_id) DO UPDATE SET

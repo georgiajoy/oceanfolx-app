@@ -148,7 +148,10 @@ const FALLBACK_ROLE_FILES: Record<BusinessRole, RequiredFile[]> = {
 
 function isMissingRoleRequirementTableError(error: any): boolean {
   const message = String(error?.message || '');
-  return message.includes("Could not find the table 'public.role_form_requirements'") ||
+  return error?.code === '42501' ||
+    message.includes('permission denied for table role_form_requirements') ||
+    message.includes('permission denied for table role_file_requirements') ||
+    message.includes("Could not find the table 'public.role_form_requirements'") ||
     message.includes("Could not find the table 'public.role_file_requirements'") ||
     message.includes('schema cache');
 }
