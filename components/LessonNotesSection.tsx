@@ -73,6 +73,13 @@ export default function LessonNotesSection({
     }
   }
 
+  function getAuthorLabel(note: LessonNote): string {
+    if (note.author?.full_name?.trim()) {
+      return note.author.full_name;
+    }
+    return `User ${note.author_user_id.slice(0, 8)}`;
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -109,7 +116,7 @@ export default function LessonNotesSection({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">
-                      {note.author?.full_name || 'Unknown'}
+                      {getAuthorLabel(note)}
                     </Badge>
                     <span className="text-xs text-gray-500">
                       {new Date(note.created_at).toLocaleString()}

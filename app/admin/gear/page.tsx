@@ -18,6 +18,9 @@ interface GearInventoryWithType extends GearInventory {
   gear_types: GearType;
 }
 
+type GearSortKey = 'gear_type' | 'sponsor' | 'size' | 'total' | 'available' | 'assigned' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 export default function AdminGearManagement() {
   const [language, setLanguage] = useState<Language>('en');
   const [gearTypes, setGearTypes] = useState<GearType[]>([]);
@@ -26,6 +29,8 @@ export default function AdminGearManagement() {
   const [showTypeDialog, setShowTypeDialog] = useState(false);
   const [showInventoryDialog, setShowInventoryDialog] = useState(false);
   const [editingInventory, setEditingInventory] = useState<GearInventoryWithType | null>(null);
+  const [sortKey, setSortKey] = useState<GearSortKey>('gear_type');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const t = useTranslation(language);
 
   const [newType, setNewType] = useState({
@@ -159,6 +164,64 @@ export default function AdminGearManagement() {
       alert('Failed to delete inventory item.');
     }
   }
+
+  function getStatusRank(item: GearInventoryWithType): number {
+    const percentAvailable = item.quantity_total > 0
+      ? (item.quantity_available / item.quantity_total) * 100
+      : 0;
+
+    if (percentAvailable > 50) return 3;
+    if (percentAvailable > 20) return 2;
+    if (percentAvailable > 0) return 1;
+    return 0;
+  }
+
+  function handleSort(nextKey: GearSortKey) {
+    if (sortKey === nextKey) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDirection('asc');
+  }
+
+  function sortIndicator(key: GearSortKey): string {
+    if (sortKey !== key) return '';
+    return sortDirection === 'asc' ? ' ▲' : ' ▼';
+  }
+
+  const sortedInventory = [...inventory].sort((a, b) => {
+    const aAssigned = a.quantity_total - a.quantity_available;
+    const bAssigned = b.quantity_total - b.quantity_available;
+
+    let comparison = 0;
+    switch (sortKey) {
+      case 'gear_type':
+        comparison = a.gear_types.name.localeCompare(b.gear_types.name);
+        break;
+      case 'sponsor':
+        comparison = (a.gear_types.sponsor_name || '').localeCompare(b.gear_types.sponsor_name || '');
+        break;
+      case 'size':
+        comparison = (a.size || '').localeCompare(b.size || '');
+        break;
+      case 'total':
+        comparison = a.quantity_total - b.quantity_total;
+        break;
+      case 'available':
+        comparison = a.quantity_available - b.quantity_available;
+        break;
+      case 'assigned':
+        comparison = aAssigned - bAssigned;
+        break;
+      case 'status':
+        comparison = getStatusRank(a) - getStatusRank(b);
+        break;
+    }
+
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
 
   if (loading) {
     return <div className="text-center py-8">{t('loading')}</div>;
@@ -294,20 +357,50 @@ export default function AdminGearManagement() {
             <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Gear Type</TableHead>
-                <TableHead>Sponsor</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Available</TableHead>
-                <TableHead>Assigned</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <button type="button" className="font-medium" onClick={() => handleSort('gear_type')}>
+                    Gear Type{sortIndicator('gear_type')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" className="font-medium" onClick={() => handleSort('sponsor')}>
+                    Sponsor{sortIndicator('sponsor')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" className="font-medium" onClick={() => handleSort('size')}>
+                    Size{sortIndicator('size')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" className="font-medium" onClick={() => handleSort('total')}>
+                    Total{sortIndicator('total')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" className="font-medium" onClick={() => handleSort('available')}>
+                    Available{sortIndicator('available')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" className="font-medium" onClick={() => handleSort('assigned')}>
+                    Assigned{sortIndicator('assigned')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" className="font-medium" onClick={() => handleSort('status')}>
+                    Status{sortIndicator('status')}
+                  </button>
+                </TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventory.map((item) => {
+              {sortedInventory.map((item) => {
                 const assigned = item.quantity_total - item.quantity_available;
-                const percentAvailable = (item.quantity_available / item.quantity_total) * 100;
+                const percentAvailable = item.quantity_total > 0
+                  ? (item.quantity_available / item.quantity_total) * 100
+                  : 0;
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.gear_types.name}</TableCell>

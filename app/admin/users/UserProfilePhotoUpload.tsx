@@ -48,7 +48,12 @@ export function UserProfilePhotoUpload({ userId, currentPhotoUrl, onPhotoUpdate 
       const { data } = supabase.storage.from('profile-photos').getPublicUrl(path);
       const publicUrl = data.publicUrl;
 
-      await updateUserProfilePhotoAction(userId, publicUrl);
+      const updatePhotoResult = await updateUserProfilePhotoAction(userId, publicUrl);
+      if (!updatePhotoResult.success) {
+        setError(updatePhotoResult.error || 'Failed to update profile photo');
+        return;
+      }
+
       onPhotoUpdate(publicUrl);
     } catch (uploadError: any) {
       setError(uploadError.message || 'Failed to upload profile photo');

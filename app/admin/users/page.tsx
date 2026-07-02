@@ -109,7 +109,11 @@ export default function UsersManagementPage() {
     }
 
     try {
-      await deleteUserAction(userId);
+      const result = await deleteUserAction(userId);
+      if (!result.success) {
+        setError(result.error || 'Failed to delete user');
+        return;
+      }
       setSuccessMessage('User deleted successfully');
       await loadUsers();
     } catch (deleteError: any) {

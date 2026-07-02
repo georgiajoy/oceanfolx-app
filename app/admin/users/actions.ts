@@ -46,6 +46,18 @@ function mapRoleToAccessLevel(role: UserRole | null | undefined): 'participant' 
   return null;
 }
 
+function toActionErrorMessage(error: any, fallback: string): string {
+  const message = typeof error?.message === 'string' ? error.message.trim() : '';
+  if (!message) return fallback;
+
+  const permissionMatch = message.match(/permission denied for table\s+"?([a-zA-Z0-9_]+)"?/i);
+  if (permissionMatch?.[1]) {
+    return `Database permission denied on table ${permissionMatch[1]}. Please run the latest Supabase migrations.`;
+  }
+
+  return message;
+}
+
 async function getCallerRoleAndAccessLevel(supabase: ReturnType<typeof createServerClientSupabase>, userId: string) {
   let role: UserRole | null = null;
 
@@ -205,6 +217,62 @@ async function upsertUserProfileWithCompatibility(
   }
 
   return { error: new Error('Exceeded compatibility retries for user_profiles upsert') };
+}
+
+async function insertParticipantWithCompatibleColumns(
+  supabase: ReturnType<typeof createAdminClient>,
+  payload: Record<string, any>
+) {
+  const workingPayload = { ...payload };
+  let attempts = 0;
+
+  while (attempts < 30) {
+    attempts += 1;
+    const { error } = await supabase.from('participants').insert(workingPayload);
+
+    if (!error) {
+      return { error: null };
+    }
+
+    const missingColumn = parseMissingTableColumn(error, 'participants');
+    if (!missingColumn || !(missingColumn in workingPayload)) {
+      return { error };
+    }
+
+    delete workingPayload[missingColumn];
+  }
+
+  return { error: new Error('Exceeded compatibility retries for participants insert') };
+}
+
+async function updateParticipantWithCompatibleColumns(
+  supabase: ReturnType<typeof createAdminClient>,
+  participantId: string,
+  payload: Record<string, any>
+) {
+  const workingPayload = { ...payload };
+  let attempts = 0;
+
+  while (attempts < 30) {
+    attempts += 1;
+    const { error } = await supabase
+      .from('participants')
+      .update(workingPayload)
+      .eq('id', participantId);
+
+    if (!error) {
+      return { error: null };
+    }
+
+    const missingColumn = parseMissingTableColumn(error, 'participants');
+    if (!missingColumn || !(missingColumn in workingPayload)) {
+      return { error };
+    }
+
+    delete workingPayload[missingColumn];
+  }
+
+  return { error: new Error('Exceeded compatibility retries for participants update') };
 }
 
 async function upsertCoreFormSubmissionsWithCompatibility(
@@ -385,26 +453,26 @@ export async function createUserAction(
   signature?: string,
   signatureDate?: string
 ) {
-  // Verify caller is admin or intern
-  await assertCallerIsAdminOrIntern();
-
-  const businessRole = normalizeBusinessRole(role);
-  const legacyUsersRole = mapBusinessRoleToLegacyUsersRole(businessRole);
-  
-  // Get hardcoded policy URLs based on role
-  const { 
-    code_of_conduct_url: codeOfConductUrl, 
-    safeguarding_policy_url: safeguardingPolicyUrl, 
-    indemnity_agreement_url: indemnityAgreementUrl 
-  } = getPolicyUrlsForRole(role);
-  
-  // Normalize phone number to digits
-  const normalizedPhone = normalizePhoneToDigits(phone);
-  const email = phoneToEmail(phone);
-  
-  const supabase = createAdminClient();
-
   try {
+    // Verify caller is admin or intern
+    await assertCallerIsAdminOrIntern();
+
+    const businessRole = normalizeBusinessRole(role);
+    const legacyUsersRole = mapBusinessRoleToLegacyUsersRole(businessRole);
+    
+    // Get hardcoded policy URLs based on role
+    const { 
+      code_of_conduct_url: codeOfConductUrl, 
+      safeguarding_policy_url: safeguardingPolicyUrl, 
+      indemnity_agreement_url: indemnityAgreementUrl 
+    } = getPolicyUrlsForRole(role);
+    
+    // Normalize phone number to digits
+    const normalizedPhone = normalizePhoneToDigits(phone);
+    const email = phoneToEmail(phone);
+    
+    const supabase = createAdminClient();
+
     // Create auth user
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
@@ -504,7 +572,7 @@ export async function createUserAction(
 
     // Create participant record if role is participant
     if (businessRole === 'participant') {
-      const { error: participantError } = await supabase.from('participants').insert({
+      const participantInsertPayload = {
         user_id: authData.user.id,
         emergency_contact_name: emergencyContactName || null,
         emergency_contact_phone: emergencyContactPhone || null,
@@ -534,7 +602,9 @@ export async function createUserAction(
         signature: signature || null,
         signature_date: signatureDate || null,
         notes: notes || null,
-      });
+      };
+
+      const { error: participantError } = await insertParticipantWithCompatibleColumns(supabase, participantInsertPayload);
 
       if (participantError) {
         // Rollback: delete both users record and auth user
@@ -551,7 +621,7 @@ export async function createUserAction(
     return { success: true, userId: authData.user.id };
   } catch (error: any) {
     console.error('Error creating user:', error);
-    throw new Error(error.message || 'Failed to create user');
+    return { success: false, error: toActionErrorMessage(error, 'Failed to create user') };
   }
 }
 
@@ -597,22 +667,22 @@ export async function updateUserAction(
   signature?: string,
   signatureDate?: string
 ) {
-  await assertCallerIsAdminOrIntern();
-
-  const businessRole = normalizeBusinessRole(role);
-  const legacyUsersRole = mapBusinessRoleToLegacyUsersRole(businessRole);
-
-  // Get hardcoded policy URLs based on role
-  const { 
-    code_of_conduct_url: codeOfConductUrl, 
-    safeguarding_policy_url: safeguardingPolicyUrl, 
-    indemnity_agreement_url: indemnityAgreementUrl 
-  } = getPolicyUrlsForRole(role);
-
-  const normalizedPhone = normalizePhoneToDigits(phone);
-  const supabase = createAdminClient();
-
   try {
+    await assertCallerIsAdminOrIntern();
+
+    const businessRole = normalizeBusinessRole(role);
+    const legacyUsersRole = mapBusinessRoleToLegacyUsersRole(businessRole);
+
+    // Get hardcoded policy URLs based on role
+    const { 
+      code_of_conduct_url: codeOfConductUrl, 
+      safeguarding_policy_url: safeguardingPolicyUrl, 
+      indemnity_agreement_url: indemnityAgreementUrl 
+    } = getPolicyUrlsForRole(role);
+
+    const normalizedPhone = normalizePhoneToDigits(phone);
+    const supabase = createAdminClient();
+
     const userUpdatePayload = {
       role: legacyUsersRole,
         preferred_language: preferredLanguage,
@@ -730,19 +800,18 @@ export async function updateUserAction(
       };
 
       if (participantData) {
-        const { error: updateParticipantError } = await supabase
-          .from('participants')
-          .update(participantPayload)
-          .eq('id', participantData.id);
+        const { error: updateParticipantError } = await updateParticipantWithCompatibleColumns(
+          supabase,
+          participantData.id,
+          participantPayload
+        );
 
         if (updateParticipantError) throw updateParticipantError;
       } else {
-        const { error: insertParticipantError } = await supabase
-          .from('participants')
-          .insert({
-            user_id: userId,
-            ...participantPayload,
-          });
+        const { error: insertParticipantError } = await insertParticipantWithCompatibleColumns(supabase, {
+          user_id: userId,
+          ...participantPayload,
+        });
 
         if (insertParticipantError) throw insertParticipantError;
       }
@@ -751,7 +820,7 @@ export async function updateUserAction(
     return { success: true };
   } catch (error: any) {
     console.error('Error updating user:', error);
-    throw new Error(error.message || 'Failed to update user');
+    return { success: false, error: toActionErrorMessage(error, 'Failed to update user') };
   }
 }
 
@@ -761,17 +830,17 @@ export async function updateUserAction(
  * Prevents deleting own account
  */
 export async function deleteUserAction(userId: string) {
-  // Verify caller is admin or intern and get their ID and role
-  const { userId: callerId } = await assertCallerIsAdminOrIntern();
-  
-  // Prevent deleting own account
-  if (callerId === userId) {
-    throw new Error('Cannot delete your own account');
-  }
-  
-  const supabase = createAdminClient();
-  
   try {
+    // Verify caller is admin or intern and get their ID and role
+    const { userId: callerId } = await assertCallerIsAdminOrIntern();
+
+    // Prevent deleting own account
+    if (callerId === userId) {
+      throw new Error('Cannot delete your own account');
+    }
+
+    const supabase = createAdminClient();
+
     // Delete auth user (this will cascade to users table via foreign key)
     const { error } = await supabase.auth.admin.deleteUser(userId);
     
@@ -780,7 +849,7 @@ export async function deleteUserAction(userId: string) {
     return { success: true };
   } catch (error: any) {
     console.error('Error deleting user:', error);
-    throw new Error(error.message || 'Failed to delete user');
+    return { success: false, error: toActionErrorMessage(error, 'Failed to delete user') };
   }
 }
 
@@ -797,118 +866,133 @@ export interface UserFileUploadInput {
 }
 
 export async function saveUserFormSubmissionsAction(userId: string, submissions: UserFormSubmissionInput[]) {
-  await assertCallerIsAdminOrIntern();
+  try {
+    await assertCallerIsAdminOrIntern();
 
-  if (!userId) {
-    throw new Error('User ID is required');
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    const supabase = createAdminClient();
+
+    const rows = submissions.map((submission) => ({
+      user_id: userId,
+      form_id: submission.form_id,
+      accepted: submission.accepted,
+      signed_at: submission.signed_at || null,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase
+      .from('user_form_submissions')
+      .upsert(rows, { onConflict: 'user_id,form_id' });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to save form submissions');
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error saving user form submissions:', error);
+    return { success: false, error: toActionErrorMessage(error, 'Failed to save form submissions') };
   }
-
-  const supabase = createAdminClient();
-
-  const rows = submissions.map((submission) => ({
-    user_id: userId,
-    form_id: submission.form_id,
-    accepted: submission.accepted,
-    signed_at: submission.signed_at || null,
-    updated_at: new Date().toISOString(),
-  }));
-
-  const { error } = await supabase
-    .from('user_form_submissions')
-    .upsert(rows, { onConflict: 'user_id,form_id' });
-
-  if (error) {
-    throw new Error(error.message || 'Failed to save form submissions');
-  }
-
-  return { success: true };
 }
 
 export async function saveUserFileUploadsAction(userId: string, uploads: UserFileUploadInput[]) {
-  await assertCallerIsAdminOrIntern();
+  try {
+    await assertCallerIsAdminOrIntern();
 
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
-
-  const supabase = createAdminClient();
-
-  const fileIds = uploads.map((upload) => upload.file_id);
-  if (fileIds.length > 0) {
-    const { error: deleteError } = await supabase
-      .from('user_file_uploads')
-      .delete()
-      .eq('user_id', userId)
-      .in('file_id', fileIds);
-
-    if (deleteError) {
-      throw new Error(deleteError.message || 'Failed to clear previous file records');
+    if (!userId) {
+      throw new Error('User ID is required');
     }
-  }
 
-  const validUploads = uploads
-    .filter((upload) => upload.file_url && upload.file_url.trim().length > 0)
-    .map((upload) => ({
-      user_id: userId,
-      file_id: upload.file_id,
-      file_url: upload.file_url.trim(),
-      notes: upload.notes || null,
-    }));
+    const supabase = createAdminClient();
 
-  if (validUploads.length === 0) {
+    const fileIds = uploads.map((upload) => upload.file_id);
+    if (fileIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('user_file_uploads')
+        .delete()
+        .eq('user_id', userId)
+        .in('file_id', fileIds);
+
+      if (deleteError) {
+        throw new Error(deleteError.message || 'Failed to clear previous file records');
+      }
+    }
+
+    const validUploads = uploads
+      .filter((upload) => upload.file_url && upload.file_url.trim().length > 0)
+      .map((upload) => ({
+        user_id: userId,
+        file_id: upload.file_id,
+        file_url: upload.file_url.trim(),
+        notes: upload.notes || null,
+      }));
+
+    if (validUploads.length === 0) {
+      return { success: true };
+    }
+
+    const { error } = await supabase
+      .from('user_file_uploads')
+      .insert(validUploads);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to save file uploads');
+    }
+
     return { success: true };
+  } catch (error: any) {
+    console.error('Error saving user file uploads:', error);
+    return { success: false, error: toActionErrorMessage(error, 'Failed to save file uploads') };
   }
-
-  const { error } = await supabase
-    .from('user_file_uploads')
-    .insert(validUploads);
-
-  if (error) {
-    throw new Error(error.message || 'Failed to save file uploads');
-  }
-
-  return { success: true };
 }
 
 export async function updateUserProfilePhotoAction(userId: string, profilePhotoUrl: string) {
-  await assertCallerIsAdminOrIntern();
+  try {
+    await assertCallerIsAdminOrIntern();
 
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
 
-  const supabase = createAdminClient();
+    const supabase = createAdminClient();
 
-  const { error: userUpdateError } = await updateUserWithCompatibleColumns(supabase, userId, {
-    profile_photo_url: profilePhotoUrl,
-  });
+    const { error: userUpdateError } = await updateUserWithCompatibleColumns(supabase, userId, {
+      profile_photo_url: profilePhotoUrl,
+    });
 
-  if (userUpdateError) {
-    throw new Error(userUpdateError.message || 'Failed to update user profile photo');
-  }
+    if (userUpdateError) {
+      throw new Error(userUpdateError.message || 'Failed to update user profile photo');
+    }
 
-  const { error: profileError } = await upsertUserProfileWithCompatibility(supabase, {
-    user_id: userId,
-    profile_photo_url: profilePhotoUrl,
-    updated_at: new Date().toISOString(),
-  });
+    const { error: profileError } = await upsertUserProfileWithCompatibility(supabase, {
+      user_id: userId,
+      profile_photo_url: profilePhotoUrl,
+      updated_at: new Date().toISOString(),
+    });
 
-  if (profileError) {
-    throw new Error(profileError.message || 'Failed to update user profile photo metadata');
-  }
+    if (profileError) {
+      throw new Error(profileError.message || 'Failed to update user profile photo metadata');
+    }
 
-  const { data: participantData, error: participantError } = await supabase
-    .from('participants')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!participantError && participantData?.id) {
-    await supabase
+    const { data: participantData, error: participantError } = await supabase
       .from('participants')
-      .update({ profile_photo_url: profilePhotoUrl })
-      .eq('id', participantData.id);
-  }
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  return { success: true };
+    if (!participantError && participantData?.id) {
+      await supabase
+        .from('participants')
+        .update({ profile_photo_url: profilePhotoUrl })
+        .eq('id', participantData.id);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating user profile photo:', error);
+    return { success: false, error: toActionErrorMessage(error, 'Failed to update user profile photo') };
+  }
 }

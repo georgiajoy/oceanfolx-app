@@ -180,6 +180,14 @@ export function getRoleLabel(role: string): string {
 }
 
 export function getFormDocumentUrl(formId: string): string | null {
+  if (formId === 'commitment_statement') {
+    return 'https://docs.google.com/document/d/1NKLWucJcTBEAIJYQppp5wpR5emlRn4mhh8WwA_eqc7Y/edit?tab=t.0';
+  }
+
+  if (formId === 'media_consent') {
+    return 'https://docs.google.com/document/d/1CYVPSTeIYhCoT8zeSzlDl_LXdBPcA_Qb/edit';
+  }
+
   if (formId === 'code_of_conduct') {
     return 'https://docs.google.com/document/d/131Px2JzGfkSwPalBCs8L-B2lkgGwlnwD/edit';
   }

@@ -77,7 +77,7 @@ export default function VolunteerDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Button
-          onClick={() => router.push('/volunteer/sessions')}
+          onClick={() => router.push('/local_leader/sessions')}
           className="h-24 bg-gradient-to-r from-[#4FBACA] to-[#3AA8BC] hover:from-[#3AA8BC] hover:to-[#2A9FB4] text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
         >
           <div className="flex flex-col items-center gap-2">
@@ -87,7 +87,7 @@ export default function VolunteerDashboard() {
         </Button>
 
         <Button
-          onClick={() => router.push('/volunteer/gear-assignments')}
+          onClick={() => router.push('/intern/gear-assignments')}
           className="h-24 bg-gradient-to-r from-[#9B59B6] to-[#8E44AD] hover:from-[#8E44AD] hover:to-[#7D3C98] text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
         >
           <div className="flex flex-col items-center gap-2">
@@ -117,7 +117,7 @@ export default function VolunteerDashboard() {
                   style={{
                     animation: `slideIn 0.4s ease-out ${index * 0.1}s backwards`
                   }}
-                  onClick={() => router.push(`/volunteer/sessions/${session.id}`)}
+                  onClick={() => router.push(`/local_leader/sessions/${session.id}`)}
                 >
                   <div className="flex items-center gap-3">
                     <Badge className="bg-gradient-to-r from-[#FF8E53] to-[#FF6B6B] text-white border-0 text-sm py-1 px-3">
@@ -160,7 +160,7 @@ export default function VolunteerDashboard() {
                   style={{
                     animation: `slideIn 0.5s ease-out ${index * 0.1}s backwards`
                   }}
-                  onClick={() => router.push('/volunteer/sessions')}
+                  onClick={() => router.push('/local_leader/sessions')}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-wrap">

@@ -39,10 +39,25 @@ interface SignupWithParticipant extends LessonSignup {
   participant: ParticipantWithUser;
 }
 
+function normalizeAttendanceStatus(status: string | null | undefined): string {
+  const normalized = String(status || '').toLowerCase();
+
+  if (normalized === 'validated' || normalized === 'confirmed' || normalized === 'attended') {
+    return 'present';
+  }
+
+  if (normalized === 'self-reported') {
+    return 'self_reported';
+  }
+
+  return normalized;
+}
+
 export default function SessionCheckInPage({ params }: { params: { id: string } }) {
-  const sessionId = params.id;
+  const sessionId = params.id?.trim();
   const [language, setLanguage] = useState<Language>('en');
   const [session, setSession] = useState<Session | null>(null);
+  const [loadError, setLoadError] = useState('');
   const [signups, setSignups] = useState<SignupWithParticipant[]>([]);
   const [attendance, setAttendance] = useState<AttendanceWithParticipant[]>([]);
   const [internId, setInternId] = useState<string>('');
@@ -56,6 +71,7 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const user = await getCurrentUser();
       if (user) {
         const profile = await getUserProfile(user.id);
@@ -65,8 +81,22 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
         }
       }
 
-      const [sessionResult, spResult, participantsResult, lessonNotesResult] = await Promise.all([
-        supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle(),
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+      if (sessionError) throw sessionError;
+
+      if (!sessionData) {
+        setSession(null);
+        return;
+      }
+
+      setSession(sessionData);
+
+      const [spResult, participantsResult, lessonNotesResult] = await Promise.all([
         supabase
           .from('session_participants')
           .select('*, participant:participants(*, user:users(full_name))')
@@ -76,22 +106,29 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
           .from('participants')
           .select('*, user:users(full_name)')
           .order('user(full_name)'),
-        supabase.from('lesson_notes').select('*').eq('session_id', sessionId).order('created_at', { ascending: false }),
+        supabase
+          .from('lesson_notes')
+          .select('*, author:users(full_name)')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: false }),
       ]);
 
-      if (sessionResult.error) throw sessionResult.error;
       if (spResult.error) throw spResult.error;
       if (participantsResult.error) throw participantsResult.error;
-        if (lessonNotesResult.error) throw lessonNotesResult.error;
+      if (lessonNotesResult.error) throw lessonNotesResult.error;
 
-      setSession(sessionResult.data);
-      const spAll = spResult.data || [];
-      setSignups((spAll as any[]).filter(s => s.status === 'signed_up'));
-      setAttendance((spAll as any[]).filter(s => s.status !== 'signed_up'));
+      const spAll = ((spResult.data || []) as any[]).map((row) => ({
+        ...row,
+        status: normalizeAttendanceStatus(row.status),
+      }));
+
+      setSignups(spAll.filter((s) => s.status === 'signed_up'));
+      setAttendance(spAll.filter((s) => s.status !== 'signed_up'));
       setAllParticipants(participantsResult.data as any[]);
-        setLessonNotes(lessonNotesResult.data || []);
-    } catch (error) {
+      setLessonNotes(lessonNotesResult.data || []);
+    } catch (error: any) {
       console.error('Error loading data:', error);
+      setLoadError(error?.message || 'Failed to load lesson details');
     } finally {
       setLoading(false);
     }
@@ -180,6 +217,12 @@ export default function SessionCheckInPage({ params }: { params: { id: string } 
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </div>
+      )}
+
       <div>
         <h2 className="text-3xl font-bold text-[#443837]">Lesson Attendance</h2>
         <p className="mt-2 text-sm text-[#443837]/70">

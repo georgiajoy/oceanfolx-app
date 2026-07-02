@@ -79,10 +79,10 @@ function VolunteerLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   const navLinks = [
-    { href: '/volunteer', icon: LayoutDashboard, label: t('dashboard') },
-    { href: '/volunteer/sessions', icon: Calendar, label: t('lessons') },
-    { href: '/volunteer/participants', icon: Users, label: t('participants') },
-    { href: '/volunteer/gear-assignments', icon: Package, label: t('gear') },
+    { href: '/local_leader', icon: LayoutDashboard, label: t('dashboard') },
+    { href: '/local_leader/sessions', icon: Calendar, label: t('lessons') },
+    { href: '/local_leader/participants', icon: Users, label: t('participants') },
+    { href: '/intern/gear-assignments', icon: Package, label: t('gear') },
   ];
 
   return (

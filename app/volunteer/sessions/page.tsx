@@ -130,7 +130,7 @@ export default function VolunteerSessionsPage() {
                       </div>
                     </div>
                   </div>
-                  <Link href={`/volunteer/sessions/${session.id}`}>
+                  <Link href={`/local_leader/sessions/${session.id}`}>
                     <Button>
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Manage Attendance

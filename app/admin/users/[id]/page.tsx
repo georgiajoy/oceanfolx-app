@@ -10,8 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { User, Edit, Save, X, Upload } from 'lucide-react';
-import { supabase, UserProfile, UserRole } from '@/lib/supabase';
+import { supabase, Language, UserProfile, UserRole } from '@/lib/supabase';
+import { useTranslation } from '@/lib/i18n';
 import { saveUserFileUploadsAction, saveUserFormSubmissionsAction, updateUserAction } from '../actions';
+import { getUserProfile } from '@/lib/auth';
 import {
   BusinessRole,
   getFormDocumentUrl,
@@ -96,6 +98,7 @@ const defaultFormState: UserDetailFormState = {
 export default function AdminUserDetailPage({ params }: { params: { id: string } }) {
   const userId = params.id;
   const router = useRouter();
+  const [language, setLanguage] = useState<Language>('en');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -113,6 +116,7 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
   const [fileUploads, setFileUploads] = useState<Record<string, { file_url: string; notes: string }>>({});
   const [uploadingFileId, setUploadingFileId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const t = useTranslation(language);
 
   const loadRoleRequirements = useCallback(async (role: BusinessRole) => {
     const forms = getRequiredFormsForRole(role);
@@ -143,6 +147,14 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
       setLoading(true);
       setError('');
 
+      const { data: currentUser } = await supabase.auth.getUser();
+      if (currentUser.user) {
+        const currentProfile = await getUserProfile(currentUser.user.id);
+        if (currentProfile) {
+          setLanguage(currentProfile.preferred_language);
+        }
+      }
+
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -169,56 +181,74 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
         .eq('user_id', userId)
         .maybeSingle();
 
+      const { data: userProfileData, error: userProfileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (userProfileError) {
+        throw new Error(userProfileError.message || 'Failed to load user profile details');
+      }
+
       if (role === 'participant' && participantData?.id) {
         router.replace(`/admin/participants/${participantData.id}`);
         return;
       }
 
-      const { data: userFormsData } = await supabase
+      const { data: userFormsData, error: userFormsError } = await supabase
         .from('user_form_submissions')
         .select('form_id, accepted')
         .eq('user_id', userId);
 
-      const { data: userFilesData } = await supabase
+      if (userFormsError) {
+        throw new Error(userFormsError.message || 'Failed to load user form submissions');
+      }
+
+      const { data: userFilesData, error: userFilesError } = await supabase
         .from('user_file_uploads')
         .select('file_id, file_url, notes, uploaded_at')
         .eq('user_id', userId)
         .order('uploaded_at', { ascending: false });
 
+      if (userFilesError) {
+        throw new Error(userFilesError.message || 'Failed to load user file uploads');
+      }
+
       setUser({ ...userData, role } as UserProfile);
-      setProfilePhotoUrl(userData.profile_photo_url || participantData?.profile_photo_url || '');
+      setProfilePhotoUrl(participantData?.profile_photo_url || userProfileData?.profile_photo_url || userData.profile_photo_url || '');
       setFormState({
         phone: userData.phone || '',
         role,
         full_name: userData.full_name || '',
-        preferred_name: userData.preferred_name || '',
-        birthday: userData.birthday || '',
-        allergies: userData.allergies || '',
-        bpjs_number: userData.bpjs_number || '',
-        notes: participantData?.notes || userData.notes || '',
-        emergency_contact_name: participantData?.emergency_contact_name || userData.emergency_contact_name || '',
-        emergency_contact_phone: participantData?.emergency_contact_phone || userData.emergency_contact_phone || '',
-        shoe_size: participantData?.shoe_size || userData.shoe_size || '',
-        clothing_size: participantData?.clothing_size || userData.clothing_size || '',
+        preferred_name: userData.preferred_name || userProfileData?.preferred_name || '',
+        birthday: userData.birthday || userProfileData?.birthday || '',
+        allergies: participantData?.allergies || userProfileData?.allergies || userData.allergies || '',
+        bpjs_number: userData.bpjs_number || userProfileData?.bpjs_number || '',
+        notes: participantData?.notes || userProfileData?.notes || userData.notes || '',
+        emergency_contact_name: participantData?.emergency_contact_name || userProfileData?.emergency_contact_name || userData.emergency_contact_name || '',
+        emergency_contact_phone: participantData?.emergency_contact_phone || userProfileData?.emergency_contact_phone || userData.emergency_contact_phone || '',
+        shoe_size: participantData?.shoe_size || userProfileData?.shoe_size || userData.shoe_size || '',
+        clothing_size: participantData?.clothing_size || userProfileData?.clothing_size || userData.clothing_size || '',
         age: participantData?.age || userData.age || '',
-        village: participantData?.village || userData.village || '',
-        number_of_children: participantData?.number_of_children || userData.number_of_children || '',
-        respiratory_issues: participantData?.respiratory_issues || userData.respiratory_issues || '',
-        diabetes: participantData?.diabetes || userData.diabetes || '',
-        neurological_conditions: participantData?.neurological_conditions || userData.neurological_conditions || '',
-        chronic_illnesses: participantData?.chronic_illnesses || userData.chronic_illnesses || '',
-        head_injuries: participantData?.head_injuries || userData.head_injuries || '',
-        hospitalizations: participantData?.hospitalizations || userData.hospitalizations || '',
-        medications: participantData?.medications || userData.medications || '',
-        medications_not_taking_during_program: participantData?.medications_not_taking_during_program || userData.medications_not_taking_during_program || '',
-        medical_dietary_requirements: participantData?.medical_dietary_requirements || userData.medical_dietary_requirements || '',
-        religious_personal_dietary_restrictions: participantData?.religious_personal_dietary_restrictions || userData.religious_personal_dietary_restrictions || '',
-        swim_ability_calm: participantData?.swim_ability_calm || userData.swim_ability_calm || 'none',
-        swim_ability_moving: participantData?.swim_ability_moving || userData.swim_ability_moving || 'none',
-        surfing_experience: participantData?.surfing_experience || userData.surfing_experience || 'none',
-        hijab_photo_preference: participantData?.hijab_photo_preference || userData.hijab_photo_preference || 'with_or_without',
-        signature: participantData?.signature || userData.signature || '',
-        signature_date: participantData?.signature_date || userData.signature_date || '',
+        village: participantData?.village || userProfileData?.village || userData.village || '',
+        number_of_children: participantData?.number_of_children || userProfileData?.number_of_children || userData.number_of_children || '',
+        respiratory_issues: participantData?.respiratory_issues || userProfileData?.respiratory_issues || userData.respiratory_issues || '',
+        diabetes: participantData?.diabetes || userProfileData?.diabetes || userData.diabetes || '',
+        neurological_conditions: participantData?.neurological_conditions || userProfileData?.neurological_conditions || userData.neurological_conditions || '',
+        chronic_illnesses: participantData?.chronic_illnesses || userProfileData?.chronic_illnesses || userData.chronic_illnesses || '',
+        head_injuries: participantData?.head_injuries || userProfileData?.head_injuries || userData.head_injuries || '',
+        hospitalizations: participantData?.hospitalizations || userProfileData?.hospitalizations || userData.hospitalizations || '',
+        medications: participantData?.medications || userProfileData?.medications || userData.medications || '',
+        medications_not_taking_during_program: participantData?.medications_not_taking_during_program || userProfileData?.medications_not_taking_during_program || userData.medications_not_taking_during_program || '',
+        medical_dietary_requirements: participantData?.medical_dietary_requirements || userProfileData?.medical_dietary_requirements || userData.medical_dietary_requirements || '',
+        religious_personal_dietary_restrictions: participantData?.religious_personal_dietary_restrictions || userProfileData?.religious_personal_dietary_requirements || userData.religious_personal_dietary_restrictions || '',
+        swim_ability_calm: participantData?.swim_ability_calm || userProfileData?.swim_ability_calm || userData.swim_ability_calm || 'none',
+        swim_ability_moving: participantData?.swim_ability_moving || userProfileData?.swim_ability_moving || userData.swim_ability_moving || 'none',
+        surfing_experience: participantData?.surfing_experience || userProfileData?.surfing_experience || userData.surfing_experience || 'none',
+        hijab_photo_preference: participantData?.hijab_photo_preference || userProfileData?.hijab_photo_preference || userData.hijab_photo_preference || 'with_or_without',
+        signature: participantData?.signature || userProfileData?.signature || userData.signature || '',
+        signature_date: participantData?.signature_date || userProfileData?.signature_date || userData.signature_date || '',
       });
 
       await loadRoleRequirements(role);
@@ -302,7 +332,7 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
     setMessage('');
 
     try {
-      await updateUserAction(
+      const updateResult = await updateUserAction(
         user.id,
         formState.phone,
         formState.role as UserRole,
@@ -345,7 +375,12 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
         formState.signature_date
       );
 
-      await saveUserFormSubmissionsAction(
+      if (!updateResult.success) {
+        setError(updateResult.error || 'Failed to save user');
+        return;
+      }
+
+      const formSubmissionsResult = await saveUserFormSubmissionsAction(
         user.id,
         requiredForms.map((form) => ({
           form_id: form.id,
@@ -354,7 +389,12 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
         }))
       );
 
-      await saveUserFileUploadsAction(
+      if (!formSubmissionsResult.success) {
+        setError(formSubmissionsResult.error || 'Failed to save form submissions');
+        return;
+      }
+
+      const fileUploadsResult = await saveUserFileUploadsAction(
         user.id,
         requiredFiles.map((file) => ({
           file_id: file.id,
@@ -362,6 +402,11 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
           notes: fileUploads[file.id]?.notes || '',
         }))
       );
+
+      if (!fileUploadsResult.success) {
+        setError(fileUploadsResult.error || 'Failed to save file uploads');
+        return;
+      }
 
       setMessage('User updated successfully.');
       setEditingInfo(false);
@@ -373,9 +418,27 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
     }
   }
 
+  const notesFields = useMemo(
+    () => [
+      { key: 'medications', label: 'Medications' },
+      { key: 'medications_not_taking_during_program', label: 'Medications Not Taking During Program' },
+      { key: 'notes', label: 'Notes' },
+    ] as const,
+    []
+  );
+  const checkboxRequiredForms = useMemo(
+    () => requiredForms.filter((form) => form.id !== 'hijab_photo_preference'),
+    [requiredForms]
+  );
+
+  if (loading) return <div className="text-center py-8 text-gray-500">Loading user...</div>;
+  if (!user) return <div className="text-center py-8 text-red-600">User not found</div>;
+
+  const translate = t;
+
   const fields = [
     { key: 'full_name', label: 'Full Name' },
-    { key: 'phone', label: 'Phone Number' },
+    { key: 'phone', label: translate('phone_number') },
     { key: 'preferred_name', label: 'Preferred Name' },
     { key: 'birthday', label: 'Birthday', type: 'date' },
     { key: 'emergency_contact_name', label: 'Emergency Contact Name' },
@@ -397,23 +460,12 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
     { key: 'religious_personal_dietary_restrictions', label: 'Religious/Personal Dietary Restrictions' },
   ] as const;
 
-  const notesFields = useMemo(
-    () => [
-      { key: 'medications', label: 'Medications' },
-      { key: 'medications_not_taking_during_program', label: 'Medications Not Taking During Program' },
-      { key: 'notes', label: 'Notes' },
-    ] as const,
-    []
-  );
-
-  if (loading) return <div className="text-center py-8 text-gray-500">Loading user...</div>;
-  if (!user) return <div className="text-center py-8 text-red-600">User not found</div>;
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">{formState.full_name || 'User'}</h2>
         <p className="mt-1 text-xs sm:text-sm text-[#443837]/70">Role: {getRoleLabel(formState.role)}</p>
+        <p className="mt-1 text-xs sm:text-sm text-[#443837]/70">{t('phone_number')}: {formState.phone || t('not_specified')}</p>
       </div>
 
       {error && (
@@ -577,10 +629,10 @@ export default function AdminUserDetailPage({ params }: { params: { id: string }
           <CardTitle>Acknowledgments and Agreements</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {requiredForms.length === 0 ? (
+          {checkboxRequiredForms.length === 0 ? (
             <p className="text-sm text-gray-500">No forms required for this role.</p>
           ) : (
-            requiredForms.map((form) => {
+            checkboxRequiredForms.map((form) => {
               const formUrl = getFormDocumentUrl(form.id);
 
               return (

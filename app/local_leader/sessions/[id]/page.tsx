@@ -115,7 +115,7 @@ export default function LocalLeaderSessionDetailPage() {
 
         const { data: lessonNotesData, error: lessonNotesError } = await supabase
           .from('lesson_notes')
-          .select('*')
+          .select('*, author:users(full_name)')
           .eq('session_id', sessionId)
           .order('created_at', { ascending: false });
 

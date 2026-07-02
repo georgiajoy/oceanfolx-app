@@ -6,6 +6,7 @@ import { supabase, Language, GearInventory, GearType, Participant, GearAssignmen
 import { useTranslation } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -29,6 +30,7 @@ export default function GearAssignmentsPage() {
   const [inventory, setInventory] = useState<GearInventoryWithType[]>([]);
   const [assignments, setAssignments] = useState<GearAssignmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const t = useTranslation(language);
 
@@ -163,6 +165,16 @@ export default function GearAssignmentsPage() {
     }
   }
 
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const filteredAssignments = assignments.filter((assignment) => {
+    if (!normalizedSearchTerm) return true;
+
+    const participantName = (assignment.participants.full_name || '').toLowerCase();
+    const gearType = (assignment.gear_inventory.gear_types.name || '').toLowerCase();
+
+    return participantName.includes(normalizedSearchTerm) || gearType.includes(normalizedSearchTerm);
+  });
+
   if (loading) {
     return <div className="text-center py-8">{t('loading')}</div>;
   }
@@ -252,6 +264,13 @@ export default function GearAssignmentsPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Gear Assignments</CardTitle>
+          <div className="mt-3">
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by participant name or gear type"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -270,7 +289,7 @@ export default function GearAssignmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {assignments.map((assignment) => (
+              {filteredAssignments.map((assignment) => (
                 <TableRow key={assignment.id}>
                   <TableCell className="font-medium">{assignment.participants.full_name}</TableCell>
                   <TableCell>
@@ -297,6 +316,13 @@ export default function GearAssignmentsPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredAssignments.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-sm text-gray-500 py-6">
+                    No assignments match your search.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
           </div>

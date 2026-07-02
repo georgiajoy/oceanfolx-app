@@ -40,10 +40,17 @@ interface AttendanceHistory {
   }[];
 }
 
+interface ParticipantWithUser extends Participant {
+  user?: {
+    full_name?: string;
+    phone?: string;
+  };
+}
+
 export default function AdminParticipantDetailPage({ params }: { params: { id: string } }) {
   const participantId = params.id;
   const [language, setLanguage] = useState<Language>('en');
-  const [participant, setParticipant] = useState<Participant | null>(null);
+  const [participant, setParticipant] = useState<ParticipantWithUser | null>(null);
   const [participantSkills, setParticipantSkills] = useState<ParticipantSkillWithDetails[]>([]);
   const [participantLevels, setParticipantLevels] = useState<ParticipantLevelWithDetails[]>([]);
   const [allLevels, setAllLevels] = useState<Level[]>([]);
@@ -102,7 +109,7 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
       }
 
       const [participantResult, skillsResult, levelsResult, participantSkillsResult, participantLevelsResult, lessonHistoryResult] = await Promise.all([
-        supabase.from('participants').select('*, user:users(full_name)').eq('id', participantId).maybeSingle(),
+        supabase.from('participants').select('*, user:users(full_name, phone)').eq('id', participantId).maybeSingle(),
         supabase.from('skills').select('*').order('order_number'),
         supabase.from('levels').select('*').order('order_number'),
         supabase.from('participant_progress').select('*, skill:skills(*)').eq('participant_id', participantId).not('skill_id','is', null),
@@ -392,6 +399,7 @@ export default function AdminParticipantDetailPage({ params }: { params: { id: s
       <div>
         <h2 className="text-2xl sm:text-3xl font-bold text-[#443837]">{participant.full_name}</h2>
         <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#443837]/70">Manage participant progress</p>
+        <p className="mt-1 text-xs sm:text-sm text-[#443837]/70">{t('phone_number')}: {participant.user?.phone || t('not_specified')}</p>
       </div>
 
       {message && (

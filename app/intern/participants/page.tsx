@@ -243,6 +243,8 @@ export default function InternParticipantsPage() {
         });
         loadParticipants();
         setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setError(result.error || 'Failed to create participant');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create participant');
@@ -809,7 +811,7 @@ export default function InternParticipantsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => router.push(`/volunteer/participants/${participant.id}`)}
+                          onClick={() => router.push(`/local_leader/participants/${participant.id}`)}
                         >
                           <Info className="h-4 w-4 mr-1" />
                           More Info

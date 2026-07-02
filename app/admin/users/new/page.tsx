@@ -116,6 +116,10 @@ export default function AdminCreateUserPage() {
   }
 
   const showParticipantFields = useMemo(() => isParticipantRole(formState.role), [formState.role]);
+  const checkboxRequiredForms = useMemo(
+    () => requiredForms.filter((form) => form.id !== 'hijab_photo_preference'),
+    [requiredForms]
+  );
 
   function setField<K extends keyof CreateUserFormState>(key: K, value: CreateUserFormState[K]) {
     setFormState((prev) => ({ ...prev, [key]: value }));
@@ -181,7 +185,8 @@ export default function AdminCreateUserPage() {
       );
 
       if (!createResult.success || !createResult.userId) {
-        throw new Error('User creation failed.');
+        setError(createResult.error || 'User creation failed.');
+        return;
       }
 
       const submissions = requiredForms.map((form) => ({
@@ -190,7 +195,12 @@ export default function AdminCreateUserPage() {
         signed_at: formState.signature_date || null,
       }));
 
-      await saveUserFormSubmissionsAction(createResult.userId, submissions);
+      const submissionsResult = await saveUserFormSubmissionsAction(createResult.userId, submissions);
+      if (!submissionsResult.success) {
+        setError(submissionsResult.error || 'Failed to save form submissions.');
+        return;
+      }
+
       router.push(`/admin/users/${createResult.userId}`);
     } catch (submitError: any) {
       setError(submitError.message || 'Failed to create user');
@@ -330,10 +340,10 @@ export default function AdminCreateUserPage() {
           <CardContent className="space-y-4">
             {loadingRequirements ? (
               <p className="text-sm text-gray-500">Loading requirements...</p>
-            ) : requiredForms.length === 0 ? (
+            ) : checkboxRequiredForms.length === 0 ? (
               <p className="text-sm text-gray-500">No forms required for this role.</p>
             ) : (
-              requiredForms.map((form) => {
+              checkboxRequiredForms.map((form) => {
                 const formUrl = getFormDocumentUrl(form.id);
 
                 return (
